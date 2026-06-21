@@ -63,6 +63,7 @@ def main() -> int:
     ap.add_argument("--max-len", type=int, default=32)
     args = ap.parse_args()
 
+    torch.manual_seed(7)  # 재현성 — 가드들이 학습마다 흔들리지 않게(MPS 는 완전 결정은 아님)
     ssot = load_ssot()
     ls = LabelSpace(ssot)
     train_rows = read_jsonl(DATA / "train.jsonl")

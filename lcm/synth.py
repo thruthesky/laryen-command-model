@@ -121,7 +121,9 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"{al}으로 이동해", intent))
     # 안전지대 대기(move location=safe) — '대기/쉬어'도 move(safe).
     safe_phr = ["세이프존에서 대기해", "안전지대로 가서 쉬어", "쉼터로 가", "마을로 이동",
-                "안전지대로 피신", "세이프존으로 가줘", "안전한 곳으로 가", "대기 장소로 가"]
+                "안전지대로 피신", "세이프존으로 가줘", "안전한 곳으로 가", "대기 장소로 가",
+                "도망쳐", "후퇴해", "피신해", "대피해", "안전지대로 도망", "안전한 곳으로 피해",
+                "세이프존으로 후퇴", "도망가자", "피하자"]  # 후퇴 은어 → 안전지대 이동
     for t in safe_phr:
         out.append((t, {"action": "move", "location": "safe"}))
     # 순수 방향.
@@ -189,6 +191,16 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
             out.append((f"{al}에서 사냥하고 체력 {hp}% 아래면 피신",
                         {"action": "hunt", "location": lm["id"],
                          "retreatToSafeZone": True, "retreatHpPct": hp}))
+    # 모든 archetype 균등 학습 — monsters(multi-label) TP 가 학습 비결정성에 흔들리지 않게
+    # 32종 각각 충분한 hunt 예시 보장(과거 일부 archetype false negative 반복).
+    for arch in archs:
+        for _ in range(2):
+            lm = rng.choice(hunts)
+            al = rng.choice([a for a in lm["aliases"]
+                             if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
+            for v in ("잡아", "사냥해", "처치해", "사냥해줘"):
+                out.append((f"{al}에서 {arch} {v}",
+                            {"action": "hunt", "location": lm["id"], "monsters": [arch]}))
     # 위치 없는 사냥(레벨 추천 — location 비움).
     for t in ("사냥하자", "사냥 시작", "자동으로 사냥해", "사냥하러 가자", "let's hunt",
               "사냥터 가서 사냥", "몬스터 잡으러 가자", "사냥 좀 하자"):
@@ -212,7 +224,8 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
         out.append((w, {"action": "stop"}))
     # potion(4종) — 풍부한 표현.
     pot_verbs = ["물약", "물약 먹어", "물약 마셔", "물약 써", "물약 사용", "물약 줘", "포션",
-                 "물약 좀 먹자", "물약 좀 줘", "물약 마시자"]  # 구어체
+                 "물약 좀 먹자", "물약 좀 줘", "물약 마시자",
+                 "물약 빨아", "물약 빨아줘", "빨아", "들이켜", "물약 들이켜"]  # 구어체·은어
     for pid, words in _POTION_WORDS.items():
         for w in words:
             for v in rng.sample(pot_verbs, k=3):
