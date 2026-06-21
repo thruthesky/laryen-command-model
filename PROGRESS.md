@@ -19,6 +19,21 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 12 (2026-06-22) — 완성 검증 + 통합 현황 정리
+**자아비판**: stop 0.43(iter4) 약점이 그 뒤 개선됐는지 미확인. 남은 작업이 차단지점이라
+사용자 결정 지원 필요.
+
+**확인**: action별 재측정 — auto_combat/auto_potion/open_menu/unequip 모두 **1.0**(해소),
+stop 0.71(작은 표본 5/7, "pause"·unknown↔stop 혼동)뿐인데 **stop 은 1차 fast-path 가
+별칭으로 처리해 실전 무영향**. 정확도 약점 실질 해소.
+
+**정리**: INTEGRATION.md 통합 현황 체크리스트 — dart 토큰화/라벨/디코드 ✅ 완료, 남은
+onnxruntime 추론+3계층은 🛑 사용자 승인 차단지점(① 비공식 패키지 ② lib 변경+flutter/DTD
+③ 모델 서버 배포) 명시.
+
+**결론**: **LCM repo 측 완성**(완료조건 1·2·3·4 달성, exact 0.926·OOD 0.97·추론 0.44ms·
+dart parity). 다음 큰 진전(라리엔 lib 통합)은 사용자 승인 필요. 그 전까지 미세 학습은 marginal.
+
 ### iter 11 (2026-06-22) — STT 공백 강건성(+전반 개선)
 **자아비판**: STT 전사·사용자 입력은 띄어쓰기가 불규칙한데 학습은 공백 있는 표현 위주 →
 강건성 0.79("체력물약먹어"→move, "강철세트착용"→unknown).

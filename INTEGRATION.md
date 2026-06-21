@@ -67,8 +67,23 @@ LCM은 **ByteLevelBPE**(`artifacts/tokenizer/{vocab.json,merges.txt}`)를 쓴다
 `laryen.com/models/lcm/`에서 다운로드(앱 재배포 없이 갱신). fast-path 규칙
 (`fast_path.json`)과 동일한 stale-while-revalidate 패턴.
 
-## 다음 작업(통합 단계)
-1. dart ByteLevelBPE 인코더 + 파이썬 parity golden 테스트.
-2. `config/ssot.json` → dart 라벨 상수 생성 스크립트.
-3. `decode_intent` dart 포팅 + 단위 테스트(파이썬 케이스 재사용).
-4. onnxruntime 세션 로드 + 3계층 classify 위젯 통합.
+## 통합 현황 & 남은 단계
+
+LCM repo 측(모델·dart 토큰화/디코드)은 **완성**. 라리엔 lib 측만 남았고, 그 진입이
+**사용자 승인 차단지점**이다.
+
+- [x] **dart ByteLevelBPE** — `dart/lib/lcm_tokenizer.dart` + parity(`dart test`). (iter9)
+- [x] **라벨 공간** — `golden_tokenize.json`의 `labels`/`head_specs`(ssot.json 파생). (iter5/10)
+- [x] **decode_intent dart** — `dart/lib/lcm_decoder.dart` + parity. (iter10)
+- [ ] **onnxruntime 추론 + 3계층 classify** — 🛑 **사용자 승인 차단지점**:
+  - **(1) 비공식 패키지**: onnxruntime Dart 바인딩(pub.dev `onnxruntime` 등)은 Flame 공식이
+    아니므로 CLAUDE.md상 도입 전 사용자 확인 필수. (sherpa_onnx가 ORT 세션을 재노출하면
+    추가 패키지 0일 수 있으나 확인 필요.)
+  - **(2) lib/ 변경 + flutter 빌드 + DTD 검증**: `voice_command_sheet.dart`의 fast-path 실패
+    경로에 LCM 2차(`classify`)를 끼우고, 실패 시 기존 CF 폴백. 클라 빌드 영향 → DTD 시각 검증
+    의무 + 다른 세션 working tree 충돌 주의.
+  - **(3) 모델 서버 배포**: `lcm.int8.onnx`+`vocab.json`/`merges.txt`를 `laryen.com/models/lcm/`
+    에(sherpa 모델·fast_path.json과 동일 stale-while-revalidate).
+
+→ 위 3가지를 사용자가 승인하면, 라리엔은 [토큰화 lcm_tokenizer] + [추론 onnxruntime] +
+  [디코드 lcm_decoder] + [3계층 classify(infer.py 동치)]를 조립해 통합 완료.
