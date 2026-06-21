@@ -173,10 +173,14 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
         out.append((f"{al}에서 {m2[0]}랑 {m2[1]} 사냥",
                     {"action": "hunt", "location": lm["id"], "monsters": m2}))
         mon = rng.choice(archs)
-        hp = rng.choice([20, 30, 40, 50])
-        out.append((f"{al}에서 {mon} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
-                    {"action": "hunt", "location": lm["id"], "monsters": [mon],
-                     "retreatToSafeZone": True, "retreatHpPct": hp}))
+        # HP % 전 범위(10~90) 학습 — 과거 "60%"→20 오류(데이터에 20~50 만 있었음).
+        for hp in rng.sample([10, 20, 30, 40, 50, 60, 70, 80, 90], k=3):
+            out.append((f"{al}에서 {mon} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
+                        {"action": "hunt", "location": lm["id"], "monsters": [mon],
+                         "retreatToSafeZone": True, "retreatHpPct": hp}))
+            out.append((f"{al}에서 사냥하고 체력 {hp}%면 안전지대로",
+                        {"action": "hunt", "location": lm["id"],
+                         "retreatToSafeZone": True, "retreatHpPct": hp}))
     # 위치 없는 사냥(레벨 추천 — location 비움).
     for t in ("사냥하자", "사냥 시작", "자동으로 사냥해", "사냥하러 가자", "let's hunt",
               "사냥터 가서 사냥", "몬스터 잡으러 가자", "사냥 좀 하자"):
@@ -333,13 +337,18 @@ def _gen_negation_compound(ssot, rng) -> list[tuple[str, dict]]:
     actions 배열(복합)을 지원하나 단일 action 분류기는 한 동작만 — "물약 먹고 사냥"을 hunt
     하나로 *자신있게 누락* 하므로 CF(다중 action 생성)로 폴백한다."""
     out = []
-    # 부정 — 동사 + 부정 어미.
-    acts = ["사냥", "이동", "공격", "멈춰", "멈추", "물약 먹", "물약", "착용", "자동사냥",
-            "움직이", "가", "사냥해", "도망"]
-    negs = ["하지마", "하지 마", "하지마라", "안 할래", "안 해", "하지 말고", "말아줘", "안 하고싶어"]
-    for a in acts:
-        for n in rng.sample(negs, k=4):
-            out.append((f"{a}{n}", {"action": "unknown"}))
+    # 부정 — 명시 발화(어미별 자연스러운 형태). "X하지마" + "어간+지마"("멈추지마").
+    neg_phrases = [
+        "사냥하지마", "사냥하지 마", "사냥하지 말고", "사냥 안 할래", "사냥 안 해",
+        "이동하지마", "이동하지 마", "공격하지마", "공격하지 말고",
+        "멈추지마", "멈추지 마", "멈추지 말고", "멈추지마라",
+        "가지마", "가지 마", "가지 말고", "움직이지마", "움직이지 마", "움직이지 말고",
+        "물약 먹지마", "물약 먹지 마", "착용하지마", "장착하지마",
+        "자동사냥 하지마", "자동사냥 끄지마", "도망가지마", "도망치지마",
+        "거기 가지마", "공격하지마라", "사냥하지마라", "하지마", "그러지마",
+    ]
+    for p in neg_phrases:
+        out.append((p, {"action": "unknown"}))
     # 다중동작 — 착용+사냥 / 물약+사냥 / 이동+행동.
     hunts = [lm["ko"] for lm in ssot["landmarks"] if lm["kind"] == "hunt"]
     sets = ["강철", "불멸", "빅터", "판금"]
