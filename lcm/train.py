@@ -73,7 +73,7 @@ def main() -> int:
     tk = load_tokenizer()
 
     collate = make_collate(pad_id(tk), ls, args.max_len)
-    train_ds = LcmDataset(DATA / "train.jsonl", tk, ls, args.max_len, augment=True, aug_p=0.4)
+    train_ds = LcmDataset(DATA / "train.jsonl", tk, ls, args.max_len, augment=True, aug_p=0.5)
     val_ds = LcmDataset(DATA / "val.jsonl", tk, ls, args.max_len)
     train_dl = DataLoader(train_ds, batch_size=args.batch, shuffle=True, collate_fn=collate)
     val_dl = DataLoader(val_ds, batch_size=args.batch, shuffle=False, collate_fn=collate)

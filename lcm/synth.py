@@ -172,13 +172,18 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
         m2 = rng.sample(archs, k=2)
         out.append((f"{al}에서 {m2[0]}랑 {m2[1]} 사냥",
                     {"action": "hunt", "location": lm["id"], "monsters": m2}))
-        mon = rng.choice(archs)
-        # HP % 전 범위(10~90) 학습 — 과거 "60%"→20 오류(데이터에 20~50 만 있었음).
+        # HP % 전 범위(10~90) 학습. mon 을 hp 마다 *다르게* 골라 "location+hp→특정 mon"
+        # spurious correlation 을 깬다(과거 "강남 60%"→Mecha false positive 원인).
         for hp in rng.sample([10, 20, 30, 40, 50, 60, 70, 80, 90], k=3):
+            mon = rng.choice(archs)
             out.append((f"{al}에서 {mon} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
                         {"action": "hunt", "location": lm["id"], "monsters": [mon],
                          "retreatToSafeZone": True, "retreatHpPct": hp}))
+            # monster 없는 hp 케이스(monsters 빈 것도 충분히 — false positive 억제).
             out.append((f"{al}에서 사냥하고 체력 {hp}%면 안전지대로",
+                        {"action": "hunt", "location": lm["id"],
+                         "retreatToSafeZone": True, "retreatHpPct": hp}))
+            out.append((f"{al}에서 사냥하고 체력 {hp}% 아래면 피신",
                         {"action": "hunt", "location": lm["id"],
                          "retreatToSafeZone": True, "retreatHpPct": hp}))
     # 위치 없는 사냥(레벨 추천 — location 비움).

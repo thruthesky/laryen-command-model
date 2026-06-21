@@ -11,19 +11,26 @@ from torch.utils.data import Dataset
 from .schema import LabelSpace, encode_intent
 
 
-def _jamo_noise(text: str) -> str:
-    """한글 1글자의 받침 탈락 또는 모음 ±1 변형(STT 음소 오류 모사)."""
-    idxs = [i for i, c in enumerate(text) if "가" <= c <= "힣"]
-    if not idxs:
-        return text
-    i = random.choice(idxs)
-    code = ord(text[i]) - 0xAC00
+def _jamo_one(ch: str) -> str:
+    code = ord(ch) - 0xAC00
     cho, jung, jong = code // 588, (code % 588) // 28, code % 28
     if jong and random.random() < 0.5:
         jong = 0                                    # 받침 탈락(멈춤→머춤)
     else:
         jung = (jung + random.choice([-1, 1])) % 21  # 모음 혼동(사냥→사녕)
-    return text[:i] + chr(0xAC00 + (cho * 21 + jung) * 28 + jong) + text[i + 1:]
+    return chr(0xAC00 + (cho * 21 + jung) * 28 + jong)
+
+
+def _jamo_noise(text: str) -> str:
+    """한글 1~2글자의 받침 탈락/모음 ±1 변형(STT 음소 오류 모사 — 더 강건하게)."""
+    idxs = [i for i, c in enumerate(text) if "가" <= c <= "힣"]
+    if not idxs:
+        return text
+    k = 2 if len(idxs) >= 4 and random.random() < 0.4 else 1
+    chars = list(text)
+    for i in random.sample(idxs, k=min(k, len(idxs))):
+        chars[i] = _jamo_one(chars[i])
+    return "".join(chars)
 
 
 def read_jsonl(path: Path | str) -> list[dict]:
@@ -54,12 +61,12 @@ class LcmDataset(Dataset):
         """STT/입력 노이즈 모사 — 공백 변형 + 자모 변형(받침 탈락·모음 혼동).
         sherpa STT 는 음소 단위라 "멈춰"→"멈처"·"사냥"→"사양" 류 자모 오류가 실전 노이즈."""
         r = random.random()
-        if r < self.aug_p * 0.25:
+        if r < self.aug_p * 0.18:
             return text.replace(" ", "")           # 공백 전부 제거
-        if r < self.aug_p * 0.4:
+        if r < self.aug_p * 0.3:
             return text.replace(" ", "  ")          # 공백 중복
         if r < self.aug_p:
-            return _jamo_noise(text)                # 자모 변형(받침/모음 — 비중 60%)
+            return _jamo_noise(text)                # 자모 변형(받침/모음 — 비중 70%)
         return text
 
     def __getitem__(self, i: int) -> dict:

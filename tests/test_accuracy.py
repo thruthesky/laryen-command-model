@@ -146,6 +146,26 @@ def test_location_routing(rt):
     assert len(bad) <= 1, f"복합/상대 위치인데 sml(자신있게 틀림): {bad}"
 
 
+def test_monsters_no_false_positive(rt):
+    """monster 미언급 hunt 는 monsters 가 비어야 한다(가중 3x 의 false positive 차단)."""
+    cases = ["강남에서 사냥", "연습장에서 사냥해", "강남에서 사냥하고 체력 60%면 피신",
+             "관악산에서 사냥해줘", "강동 꽃밭에서 사냥", "강북에서 자동 사냥"]
+    fp = []
+    for t in cases:
+        r = rt.classify(t)
+        if r["layer"] == "sml" and r["command"]["actions"][0].get("monsters"):
+            fp.append((t, r["command"]["actions"][0]["monsters"]))
+    assert not fp, f"monster 미언급인데 삽입(false positive): {fp}"
+
+
+def test_monsters_true_positive(rt):
+    """monster 명시 hunt 는 그 monster 가 잡혀야 한다(임계 0.7 이 true positive 유지)."""
+    for t, m in [("강남에서 Caster 사냥", "Caster"), ("연습장에서 Skeleton 잡아", "Skeleton")]:
+        r = rt.classify(t)
+        mons = r["command"]["actions"][0].get("monsters", []) if r["layer"] == "sml" else []
+        assert m in mons, f"'{t}' monsters={mons} (기대 {m} 포함)"
+
+
 def test_negation_compound_fallback(rt):
     """부정("사냥하지마")·다중동작("물약 먹고 사냥")은 fallback 해야(자신있게 반대/누락 금지)."""
     cases = [

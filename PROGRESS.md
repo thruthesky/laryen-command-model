@@ -10,13 +10,28 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 21
-- 정확도: **exact 0.960**, 홀드아웃 0.97. 강건성: 공백·유사발음·구어체·edge 통과.
-- 라우팅: 단일→sml / 복합·상대·부정·다중동작→fallback. 숫자 %(10~90) 정밀.
-- pytest **19/19** + dart **7/7**. 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 22
+- 정확도: **exact 0.961**, 홀드아웃 0.97. 강건성: 공백·유사발음·구어체·edge 통과.
+- 라우팅: 단일→sml / 복합·상대·부정·다중동작→fallback. 숫자%(10~90). monsters FP 0·TP 유지.
+- pytest **21/21** + dart **7/7**. 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 22 (2026-06-22) — monsters false positive 제거 + phonetic 안정화
+**자아비판**: iter21 잔존 — "체력 60%면"(monster 미언급)에 Mecha 삽입(false positive).
+원인=monsters 가중 3x 과함 + 합성 데이터 spurious correlation("강남+60%"→특정 mon, mon 루프밖
+고정). 임계 튜닝(0.7)은 약한 monster(Bone 0.5) true positive 를 놓쳐 실패.
+
+**구현**: ① mon 을 hp 마다 분산(spurious 제거) + monster 없는 hp 케이스 증대 ② monsters 가중
+3x→2x ③ 임계 0.5 복귀. + phonetic 반복 회귀 안정화(자모 augment aug_p 0.5·비중 70%·1~2글자).
+회귀 가드 `test_monsters_no_false_positive`·`test_monsters_true_positive`.
+
+**결과**: monsters FP 0 + TP(Bone/Skeleton/Caster) 유지, phonetic 안정 통과. exact 0.961,
+pytest 21/21, dart 7/7.
+
+**다음(iter 23 후보)**: ① 존댓말("가 주실래요") ② 동의어/은어("ㄱㄱ") sml화 ③ 다중동작 LCM
+직접(actions 배열) ④ 멀티턴 맥락("거기서 사냥").
 
 ### iter 21 (2026-06-22) — 부정 어미 완성 + 숫자 % 정밀
 **자아비판**: iter20 잔존 — "멈추지마"(="지마" 어미 미학습)→stop, "체력 60%"→retreatHpPct

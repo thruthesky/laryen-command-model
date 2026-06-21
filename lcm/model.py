@@ -79,8 +79,9 @@ def multihead_loss(logits: dict, labels: dict, head_specs) -> torch.Tensor:
         elif kind == "binary":
             total = total + bce(logits[name], labels[name])
         else:  # multi — monsters 는 32종 중 1~2개만 1 인 희소 멀티라벨이라(대부분 0)
-            # unknown 표본이 많으면 "전부 0" 으로 편향된다. 가중치로 신호를 키운다.
-            w = 3.0 if name == "monsters" else 1.0
+            # unknown 표본이 많으면 "전부 0" 편향. 가중으로 신호를 키우되 2x(3x 는 false
+            # positive 유발 — 약한 logit 이 임계를 넘어 미언급 monster 삽입).
+            w = 2.0 if name == "monsters" else 1.0
             total = total + w * bce(logits[name], labels[name])
     return total
 

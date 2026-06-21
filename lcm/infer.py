@@ -51,7 +51,9 @@ class LcmRuntime:
         input_ids = torch.tensor([ids], dtype=torch.long)
         attn = torch.ones_like(input_ids, dtype=torch.bool)
         logits = self.model(input_ids, attn)
-        heads = predict_heads(logits, self.model.head_specs)
+        # multi_threshold 0.5 — monsters false positive 는 가중 2x + spurious correlation
+        # 제거(데이터)로 잡고, 임계는 표준 0.5 로 둬 약한 monster(Bone 등) true positive 유지.
+        heads = predict_heads(logits, self.model.head_specs, multi_threshold=0.5)
         intent = decode_intent(heads, self.ls)
         return intent, action_confidence(logits)
 
