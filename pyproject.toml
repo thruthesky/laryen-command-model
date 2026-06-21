@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "torch>=2.4",          # M5 Apple Silicon MPS 학습
     "tokenizers>=0.20",    # BPE (한/영 코드스위칭)
+    "regex>=2024.0",       # bpe_ref 의 GPT-2 pre-tokenize 정규식(parity 검증용)
     "numpy>=1.26",
     "onnx>=1.16",
     "onnxscript>=0.1",     # torch.onnx.export 신규 exporter 백엔드

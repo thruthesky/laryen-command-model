@@ -19,6 +19,25 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 5 (2026-06-22) — dart BPE 포팅 레퍼런스(통합 핵심)
+**자아비판**: 완료조건 "플러터 ONNX Runtime 내장"이 미해결. 추론은 검증됐으나 *토큰화를
+dart 에서 재현* 하는 통합 핵심 난점이 남음(HF tokenizers 는 Flutter 에 없음).
+
+**구현**:
+- `lcm/bpe_ref.py` — 순수 파이썬 ByteLevelBPE(외부 BPE 라이브러리 없이 byte_to_unicode +
+  GPT-2 정규식 + merges 병합 + vocab 조회). **dart 1:1 포팅 가능한 로직만**.
+- `tests/test_bpe.py` — HF tokenizers 와 **parity**(한/영/혼용/숫자/기호/공백). 첫 시도에
+  add_prefix_space 차이(ref 가 224 prefix 토큰 추가)를 parity 실패로 잡아 False 로 수정.
+- `scripts/export_golden.py` — text→ids golden + 라벨 공간 JSON(dart 단위테스트 fixture).
+- INTEGRATION.md: dart 포팅 절차 구체화(add_prefix_space=false·RegExp unicode·golden 검증).
+
+**결과**: BPE parity 통과 → **통합의 토큰화 난점 해결**(dart 는 bpe_ref 포팅 + golden 검증).
+pytest **11/11**(schema 3·onnx 2·accuracy 4·bpe 2).
+
+**다음(iter 6 후보)**: ① dart 실제 포팅(라리엔 lib — flutter 빌드 영향, DTD 검증 필요) ②
+stop/auto_combat 혼동 ③ confidence calibration 정량(ECE) ④ distillation(CF Gemini teacher).
+
+
 ### iter 4 (2026-06-22) — 약점 클래스 보강·용량↑ (솔직한 평가: iter3와 동등)
 **자아비판**: auto_combat(n=3)·auto_potion(n=2) 표본 극소, stop 약점.
 

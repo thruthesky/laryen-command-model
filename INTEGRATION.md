@@ -52,8 +52,14 @@ LCM은 **ByteLevelBPE**(`artifacts/tokenizer/{vocab.json,merges.txt}`)를 쓴다
 | B. 토크나이저도 ONNX화 | HF tokenizers→ONNX(onnxruntime-extensions) | extensions 네이티브 추가 필요(무게↑) |
 | C. char/byte 직접 입력 | BPE 없이 byte 임베딩 모델로 재설계 | 모델 변경, vocab↑, 다음 검토 |
 
-→ **A 채택 예정.** ByteLevelBPE는 ① 텍스트를 UTF-8 byte로 → ② byte→unicode 매핑 →
-③ merges 순서대로 병합. dart 구현 + `tests/`의 golden(텍스트→id)으로 파이썬과 일치 검증.
+→ **A 채택·레퍼런스 완성.** [lcm/bpe_ref.py](lcm/bpe_ref.py)가 외부 BPE 라이브러리 없이
+순수 로직(byte_to_unicode 표 + GPT-2 정규식 pre-tokenize + merges 병합 + vocab 조회)으로
+인코딩한다. `tests/test_bpe.py`가 HF tokenizers와 **1:1 parity**(한/영/혼용/숫자/기호/공백)
+를 보장한다. dart는 이 파일을 그대로 포팅하면 된다:
+- `add_prefix_space=false`(HF ByteLevelBPETokenizer 기본과 일치 — 검증된 값).
+- `bytes_to_unicode()` 표는 dart에서 동일하게 생성(0~255 고정 매핑).
+- GPT-2 정규식 → dart `RegExp(unicode: true)`. `\p{L}`/`\p{N}` 유니코드 속성 지원.
+- 검증: `scripts/export_golden.py`가 만든 `golden_tokenize.json`(text→ids)로 dart 단위테스트.
 
 ## 배포 — 모델 파일은 서버 다운로드
 
