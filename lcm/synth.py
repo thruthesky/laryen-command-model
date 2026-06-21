@@ -52,6 +52,9 @@ _MODE_PHRASES = {
 }
 # 어미·공손 변형(한국어). 동사형 발화에 곱해 표현을 늘린다.
 _KO_TAILS = ["", " 해", " 해줘", " 해주세요", " 좀", " 줘", "줘"]
+# 한글 숫자(HP %) — STT 가 "삼십 퍼센트" 로 전사할 수 있어 학습.
+_KO_NUM = {10: "십", 20: "이십", 30: "삼십", 40: "사십", 50: "오십",
+           60: "육십", 70: "칠십", 80: "팔십", 90: "구십"}
 # unknown(잡담·게임 질문/설명) — 게임 *조작* 이 아니라서 SML 이 unknown 을 내면 클라가
 # CF(explain/chat route)로 폴백. "라리엔 이해"의 경계: 명령 vs 질문을 가르는 학습.
 # **fallback 안전장치의 핵심** — 잡담/질문을 명령으로 오인하면 오작동하므로 다양하게 학습.
@@ -191,6 +194,14 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
             out.append((f"{al}에서 사냥하고 체력 {hp}% 아래면 피신",
                         {"action": "hunt", "location": lm["id"],
                          "retreatToSafeZone": True, "retreatHpPct": hp}))
+            # 한글 숫자(STT 가 "삼십 퍼센트" 로 전사할 수 있음).
+            ko = _KO_NUM[hp]
+            r2 = {"action": "hunt", "location": lm["id"], "retreatToSafeZone": True,
+                  "retreatHpPct": hp}
+            out.append((f"{al}에서 사냥하고 체력 {ko} 퍼센트면 안전지대로", r2))
+            out.append((f"{al}에서 사냥하고 체력 {ko}프로면 피신", r2))
+            if hp == 50:  # "절반" = 50%
+                out.append((f"{al}에서 사냥하고 체력 절반이면 안전지대로", r2))
     # 모든 archetype 균등 학습 — monsters(multi-label) TP 가 학습 비결정성에 흔들리지 않게
     # 32종 각각 충분한 hunt 예시 보장(과거 일부 archetype false negative 반복).
     for arch in archs:
@@ -329,8 +340,9 @@ def _gen_complex_location(ssot, rng) -> list[tuple[str, dict]]:
     #     unknown 과다(→ monsters/slot 헤드 희석)를 피해 landmark 당 표본을 절제한다.
     for lm in lms:
         nm = lm["ko"]
-        for d in rng.sample(rel_dirs, k=2):
+        for d in rng.sample(rel_dirs, k=3):
             out.append((f"{nm} {d}으로 가", {"action": "unknown"}))
+            out.append((f"{nm} {d}로 가", {"action": "unknown"}))
             out.append((f"{nm} {d} 세이프존으로 이동해", {"action": "unknown"}))
     # (2) 위치 의존(가까운/근처 + 절대 종류) — 현재 위치를 모르므로 LCM 불가.
     for w in ["가까운", "제일 가까운", "가장 가까운", "근처", "주변", "여기서 가까운", "근처에 있는"]:
@@ -338,9 +350,11 @@ def _gen_complex_location(ssot, rng) -> list[tuple[str, dict]]:
             out.append((f"{w} {k}로 가", {"action": "unknown"}))
             out.append((f"{w} {k}으로 이동", {"action": "unknown"}))
     # (3) 모호 방위 지역(어느 사냥터인지 불명) — "북쪽 사냥터로", "남쪽 지역으로".
-    for d in ["동쪽", "서쪽", "남쪽", "북쪽"]:
+    for d in ["동쪽", "서쪽", "남쪽", "북쪽", "위", "아래"]:
         for k in ["사냥터", "지역", "쪽"]:
             out.append((f"{d} {k}으로 가", {"action": "unknown"}))
+            out.append((f"{d} {k}로 가", {"action": "unknown"}))
+            out.append((f"{d} {k}로 이동", {"action": "unknown"}))
     # (4) 정정/배제 — "강북 말고 강남", "강남 아니고 관악".
     for a in rng.sample(ko_names, k=min(10, len(ko_names))):
         b = rng.choice(ko_names)
