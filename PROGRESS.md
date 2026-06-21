@@ -19,6 +19,22 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 6 (2026-06-22) — 모바일 실용성·calibration 정량
+**자아비판**: ONNX Runtime "동작"은 증명했으나 *추론 지연(모바일 실용성)*·*confidence
+신뢰도(calibration)* 를 측정한 적 없음 — "플러터 내장"의 실전 적합성 미검증.
+
+**구현**:
+- `lcm/bench.py` — int8 onnxruntime 추론 지연(p50/p95) + ECE(Expected Calibration Error).
+- `tests/test_accuracy.py::test_calibration_ece` — ECE<0.15 회귀 가드.
+
+**결과**: 추론 지연 **p50 0.44ms / p95 0.51ms**(CPU — 모바일에서도 수 ms, 실시간 충분).
+**ECE 0.093**(평균 conf 0.883 vs acc 0.926 — 약간 보수적 = label smoothing 효과, fallback
+안전 방향). pytest **12/12**. 완료조건 2 의 실전 적합성 정량 증명.
+
+**다음(iter 7 후보)**: ① stop/auto_combat 혼동 직접 수정 ② 실제 dart 포팅(라리엔 lib) ③
+distillation(CF Gemini teacher — 비용 차단지점, 사람 승인 필요) ④ 모델 양자화 정확도 손실 측정.
+
+
 ### iter 5 (2026-06-22) — dart BPE 포팅 레퍼런스(통합 핵심)
 **자아비판**: 완료조건 "플러터 ONNX Runtime 내장"이 미해결. 추론은 검증됐으나 *토큰화를
 dart 에서 재현* 하는 통합 핵심 난점이 남음(HF tokenizers 는 Flutter 에 없음).

@@ -85,3 +85,10 @@ def test_holdout_fallback_recall(rt):
     recall = fb / len(HOLDOUT_NONCMD)
     misfired = [t for t in HOLDOUT_NONCMD if rt.classify(t)["layer"] != "fallback"]
     assert recall >= 0.7, f"홀드아웃 fallback recall {recall:.2f} < 0.7 — OOD 과신: {misfired[:8]}"
+
+
+def test_calibration_ece(rt):
+    """confidence 가 실제 정확도와 일치(ECE)해야 threshold 판정이 신뢰된다(label smoothing)."""
+    from lcm.bench import compute_ece
+    ece, mean_conf, mean_acc = compute_ece(rt.model, rt.ls, rt.tk)
+    assert ece < 0.15, f"ECE {ece:.3f} ≥ 0.15 — confidence 미보정(conf {mean_conf:.2f} vs acc {mean_acc:.2f})"
