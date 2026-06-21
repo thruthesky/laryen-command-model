@@ -19,6 +19,20 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 10 (2026-06-22) — Dart decode 포팅(통합 완결)
+**자아비판**: dart 토큰화는 됐으나 모델 출력(헤드 인덱스)→VoiceIntent JSON *디코딩* 도 dart
+로 있어야 라리엔이 onnxruntime 추론만 붙여 완결.
+
+**구현**: `dart/lib/lcm_decoder.dart`(schema.decode_intent 1:1) + `dart/test/decoder_test.dart`
+(golden parity). export_golden.py 에 decode 케이스(heads→intent) + head_specs 추가.
+
+**결과**: dart test 3/3(tokenize 2 + decode 1) — Dart decode == 파이썬 golden(heads→intent
+1:1). **dart 통합 완결**: 라리엔은 [토큰화 lcm_tokenizer.dart] + [추론 onnxruntime dart] +
+[디코드 lcm_decoder.dart] 조립만 남음(onnxruntime 추론은 라리엔 lib/flutter 단계). py 13/13.
+
+**다음(iter 11 후보)**: ① 라리엔 lib 실제 통합(onnxruntime_flutter + 3계층 classify —
+flutter/DTD) ② stop/auto_combat 혼동 ③ distillation(CF — 차단지점) ④ 모델 강건성(오타 입력).
+
 ### iter 9 (2026-06-22) — Dart BPE 실증(플러터 토큰화 동작)
 **자아비판**: "플러터 ONNX Runtime 내장"의 토큰화를 파이썬 레퍼런스로만 증명 — *실제 Dart
 코드로 동작* 함을 보이지 못함.

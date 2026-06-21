@@ -15,7 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lcm.bpe_ref import BpeRef  # noqa: E402
-from lcm.schema import LabelSpace, load_ssot  # noqa: E402
+from lcm.schema import (  # noqa: E402
+    LabelSpace, decode_intent, encode_intent, load_ssot)
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "artifacts" / "golden_tokenize.json"
@@ -28,13 +29,37 @@ SAMPLES = [
 ]
 
 
+# decode 검증용 intent(헤드 인덱스 → intent 왕복). schema.decode_intent dart 포팅 타겟.
+DECODE_INTENTS = [
+    {"action": "move", "location": "safe"},
+    {"action": "move", "direction": 270.0},
+    {"action": "hunt", "location": "gangnam_station", "monsters": ["Caster"],
+     "retreatToSafeZone": True, "retreatHpPct": 30},
+    {"action": "hunt"},
+    {"action": "potion", "potion": "hp"},
+    {"action": "equip", "set": "plate"},
+    {"action": "unequip", "slot": "weapon"},
+    {"action": "auto_combat", "mode": "auto_hunt"},
+    {"action": "open_menu", "target": "inventory"},
+    {"action": "auto_potion", "potions": ["hp"], "enable": True},
+    {"action": "stop"},
+    {"action": "unknown"},
+]
+
+
 def main() -> int:
     ref = BpeRef.load()
     ls = LabelSpace(load_ssot())
+    decode_cases = []
+    for it in DECODE_INTENTS:
+        heads = encode_intent(it, ls)  # 모델이 완벽 예측한 경우의 헤드 라벨
+        decode_cases.append({"heads": heads, "intent": decode_intent(heads, ls)})
     golden = {
-        "_note": "dart ByteLevelBPE 포팅 검증용 — bpe_ref.encode_with_special 와 일치해야 함",
+        "_note": "dart 포팅 검증용 — encode_with_special / decode_intent 와 일치해야 함",
         "tokenize": [{"text": t, "ids": ref.encode_with_special(t)} for t in SAMPLES],
+        "decode": decode_cases,
         "labels": {name: labels for name, _, labels in ls.heads()},
+        "head_specs": [{"name": n, "kind": k} for n, k, _ in ls.heads()],
         "pad_len": 32,
         "threshold": 0.7,
     }
