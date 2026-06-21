@@ -325,6 +325,36 @@ def _gen_complex_location(ssot, rng) -> list[tuple[str, dict]]:
     return out
 
 
+def _gen_negation_compound(ssot, rng) -> list[tuple[str, dict]]:
+    """부정("사냥하지마")·다중동작("강철 입고 사냥") → unknown(=CF 폴백).
+
+    **부정**: "X하지마" 는 의미 반전(중단/안함)이라 단일 긍정 분류기가 *반대로 실행*("사냥
+    하지마"→hunt)하면 치명적. CF(LLM)가 의미 해석하도록 fallback. **다중동작**: 라리엔은
+    actions 배열(복합)을 지원하나 단일 action 분류기는 한 동작만 — "물약 먹고 사냥"을 hunt
+    하나로 *자신있게 누락* 하므로 CF(다중 action 생성)로 폴백한다."""
+    out = []
+    # 부정 — 동사 + 부정 어미.
+    acts = ["사냥", "이동", "공격", "멈춰", "멈추", "물약 먹", "물약", "착용", "자동사냥",
+            "움직이", "가", "사냥해", "도망"]
+    negs = ["하지마", "하지 마", "하지마라", "안 할래", "안 해", "하지 말고", "말아줘", "안 하고싶어"]
+    for a in acts:
+        for n in rng.sample(negs, k=4):
+            out.append((f"{a}{n}", {"action": "unknown"}))
+    # 다중동작 — 착용+사냥 / 물약+사냥 / 이동+행동.
+    hunts = [lm["ko"] for lm in ssot["landmarks"] if lm["kind"] == "hunt"]
+    sets = ["강철", "불멸", "빅터", "판금"]
+    for s in sets:
+        for l in rng.sample(hunts, k=3):
+            out.append((f"{s} 세트 입고 {l}에서 사냥", {"action": "unknown"}))
+            out.append((f"{s} 입고 {l} 사냥", {"action": "unknown"}))
+            out.append((f"{s} 착용하고 {l} 사냥", {"action": "unknown"}))
+    for l in rng.sample(hunts, k=8):
+        out.append((f"물약 먹고 {l}에서 사냥", {"action": "unknown"}))
+        out.append((f"{l} 가서 물약 먹어", {"action": "unknown"}))
+        out.append((f"{l}에서 사냥하고 물약 먹어", {"action": "unknown"}))
+    return out
+
+
 def _gen_smalltalk(rng) -> list[tuple[str, dict]]:
     """게임과 *무관한* 일상 문장을 unknown 으로(outlier exposure). softmax 분류기는
     학습 분포 밖(OOD) 입력을 가까운 명령으로 *과신* 하는데("날씨 좋다"→hunt conf 1.0),
@@ -365,6 +395,7 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs += _gen_simple(ssot, rng)
     pairs += _gen_questions(ssot, rng)
     pairs += _gen_complex_location(ssot, rng)
+    pairs += _gen_negation_compound(ssot, rng)
     pairs += _gen_smalltalk(rng)
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).
     dedup: dict[str, dict] = {}

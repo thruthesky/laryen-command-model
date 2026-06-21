@@ -146,6 +146,17 @@ def test_location_routing(rt):
     assert len(bad) <= 1, f"복합/상대 위치인데 sml(자신있게 틀림): {bad}"
 
 
+def test_negation_compound_fallback(rt):
+    """부정("사냥하지마")·다중동작("물약 먹고 사냥")은 fallback 해야(자신있게 반대/누락 금지)."""
+    cases = [
+        "사냥하지마", "멈추지마", "이동하지 마", "공격하지 말고",  # 부정
+        "강철 세트 입고 강남에서 사냥", "물약 먹고 사냥해",          # 다중동작
+        "불멸 착용하고 연습장 사냥",
+    ]
+    bad = [t for t in cases if rt.classify(t)["layer"] != "fallback"]
+    assert len(bad) <= 1, f"부정/다중동작인데 sml(자신있게 틀림): {bad}"
+
+
 def test_colloquial_robustness(rt):
     """도치·구어체 발화(실사용)에 강건해야 한다."""
     cases = [
