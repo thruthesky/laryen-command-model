@@ -70,9 +70,12 @@ def multihead_loss(logits: dict, labels: dict, head_specs) -> torch.Tensor:
     total = logits["action"].new_zeros(())
     for name, kind, _ in head_specs:
         if kind == "single":
-            # action 헤드를 더 강하게(가장 중요한 라우팅 결정).
+            # action 헤드를 더 강하게(가장 중요한 라우팅 결정). label smoothing 으로
+            # OOD 과신을 억제한다(softmax 가 학습 분포 밖 입력을 1.0 으로 확신 → fallback
+            # 안전장치 무력화하는 문제 완화).
             w = 2.0 if name == "action" else 1.0
-            total = total + w * ce(logits[name], labels[name])
+            ls_eps = 0.1 if name == "action" else 0.0
+            total = total + w * ce(logits[name], labels[name], label_smoothing=ls_eps)
         elif kind == "binary":
             total = total + bce(logits[name], labels[name])
         else:  # multi

@@ -23,7 +23,9 @@ from .tokenizer import load_tokenizer
 
 ROOT = Path(__file__).resolve().parents[1]
 CKPT = ROOT / "checkpoints" / "lcm.pt"
-DEFAULT_THRESHOLD = 0.6
+# 0.7 — label smoothing 으로 calibration 된 뒤 비명령 fallback recall 1.0, 명령 sml
+# 채택 0.96 인 지점(eval threshold sweep). OOD 오작동을 막는 안전 임계.
+DEFAULT_THRESHOLD = 0.7
 
 
 class LcmRuntime:

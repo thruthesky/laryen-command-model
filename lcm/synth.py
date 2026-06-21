@@ -245,6 +245,53 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
     return out
 
 
+def _gen_questions(ssot, rng) -> list[tuple[str, dict]]:
+    """게임 명사 × 질문 어미 → unknown(explain route). 명령과 *명사를 공유하되 어미로
+    구분* 되도록 대량 생성한다("강남으로 가"=move vs "강남 어디야"=질문). fallback
+    안전장치의 일반화를 위해 무한한 질문 표현을 명사 조합으로 근사한다."""
+    out = []
+    nouns = ([lm["ko"] for lm in ssot["landmarks"]] + list(ssot["archetypes"])
+             + ["안전지대", "자동사냥", "자동전투", "파티", "거래", "크리티컬", "경험치",
+                "물약", "장비", "세트 아이템", "사냥터", "보스", "레벨", "공격력", "방어력"])
+    q_ko = ["{} 뭐야", "{}가 뭐야", "{} 어디 있어", "{} 어디야", "{}에 뭐 나와",
+            "{} 어때", "{} 설명해줘", "{} 알려줘", "{} 좋아", "{} 추천해줘", "{}는 어떻게 가"]
+    for n in nouns:
+        for q in rng.sample(q_ko, k=3):
+            out.append((q.format(n), {"action": "unknown"}))
+    en_nouns = list(ssot["archetypes"])[:12] + ["safe zone", "auto hunt", "party", "boss", "the best weapon"]
+    for n in en_nouns:
+        for q in ("what is {}", "where is {}", "how about {}", "tell me about {}"):
+            out.append((q.format(n), {"action": "unknown"}))
+    return out
+
+
+def _gen_smalltalk(rng) -> list[tuple[str, dict]]:
+    """게임과 *무관한* 일상 문장을 unknown 으로(outlier exposure). softmax 분류기는
+    학습 분포 밖(OOD) 입력을 가까운 명령으로 *과신* 하는데("날씨 좋다"→hunt conf 1.0),
+    게임 무관 일상 문장을 unknown 경계로 노출해 OOD 일반화 fallback 을 끌어올린다."""
+    topics = ["날씨", "점심", "저녁", "커피", "영화", "음악", "주말", "여행", "운동", "잠",
+              "책", "드라마", "게임", "친구", "가족", "회사", "학교", "숙제", "시험", "월급",
+              "고양이", "강아지", "라면", "치킨", "피자", "비", "눈", "바람", "기분", "꿈"]
+    tmpl = ["{} 좋다", "{} 어때", "오늘 {} 생각나", "{} 하고 싶다", "{} 별로야",
+            "{} 너무 좋아", "{} 했어", "{} 싫어", "{} 최고야", "어제 {} 봤어"]
+    out = []
+    for t in topics:
+        for tm in rng.sample(tmpl, k=3):
+            out.append((tm.format(t), {"action": "unknown"}))
+    fixed = [
+        "배고프다", "졸려", "피곤해", "행복해", "슬퍼", "화가 나", "재밌다", "지루하다",
+        "사랑해", "보고 싶어", "고생했어", "축하해", "미안해", "괜찮아", "잘했어",
+        "지금 몇 시야", "내일 비 와", "주말 잘 보내", "맛있겠다", "예쁘다", "멋지다",
+        "그게 무슨 말이야", "이해가 안 돼", "다시 말해줘", "잠깐만", "글쎄", "아마도",
+        "i'm hungry", "i'm tired", "good night", "see you tomorrow", "that's funny",
+        "i love it", "nice weather", "what's up", "long time no see", "take care",
+        "어디 가", "뭐 해", "왜 그래", "어떻게 생각해", "진짜야", "대박", "헐", "응 알겠어",
+    ]
+    for f in fixed:
+        out.append((f, {"action": "unknown"}))
+    return out
+
+
 def generate(ssot: dict, seed: int = 7) -> list[dict]:
     """모든 템플릿을 펼쳐 (text, intent) 페어 리스트를 만든다(재현 가능)."""
     rng = random.Random(seed)
@@ -252,6 +299,8 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs += _gen_move(ssot, rng)
     pairs += _gen_hunt(ssot, rng)
     pairs += _gen_simple(ssot, rng)
+    pairs += _gen_questions(ssot, rng)
+    pairs += _gen_smalltalk(rng)
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).
     dedup: dict[str, dict] = {}
     for text, intent in pairs:

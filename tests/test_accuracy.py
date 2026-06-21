@@ -72,3 +72,16 @@ def test_high_confidence_commands(rt):
     for text in ("왼쪽으로 가", "멈춰", "체력 물약 먹어", "인벤토리 열어"):
         res = rt.classify(text)
         assert res["layer"] == "sml", f"'{text}' → {res['layer']} (conf {res.get('confidence'):.2f})"
+
+
+def test_holdout_fallback_recall(rt):
+    """홀드아웃 비명령(학습셋에 없는 잡담/질문)이 fallback 되어야 한다(OOD 과신 회귀 가드).
+
+    좁은 분류기는 모르는 입력을 가까운 명령으로 *확신* 하는 경향이 있다("날씨 좋다"→hunt
+    conf 1.0). 이는 잡담을 명령 실행하는 심각한 오작동이므로 임계 이상 fallback 을 강제한다.
+    """
+    from lcm.eval import HOLDOUT_NONCMD
+    fb = sum(1 for t in HOLDOUT_NONCMD if rt.classify(t)["layer"] == "fallback")
+    recall = fb / len(HOLDOUT_NONCMD)
+    misfired = [t for t in HOLDOUT_NONCMD if rt.classify(t)["layer"] != "fallback"]
+    assert recall >= 0.7, f"홀드아웃 fallback recall {recall:.2f} < 0.7 — OOD 과신: {misfired[:8]}"

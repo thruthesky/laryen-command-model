@@ -19,6 +19,31 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 3 (2026-06-22) — OOD 과신 해결
+**자아비판**: confidence 가 fallback 안전장치로 *작동하는지* 측정한 적 없음. 잡담/질문을
+명령 실행하는 오작동(가장 위험)을 정량화 필요.
+
+**핵심 발견**: 홀드아웃 비명령(학습셋에 없는 잡담/질문) 30건 중 16건을 **conf 1.0 으로
+명령 오인**("날씨 좋다"→hunt 1.0). confidence threshold 가 안전망이 전혀 안 됨 — 좁은
+도메인 softmax 분류기의 OOD 과신. **in-domain 질문 데이터 증강(unknown 77→381)으로도
+미해결**(recall 0.47→0.43).
+
+**해결(정석 기법)**:
+- **outlier exposure**: 게임 무관 일상 문장(`_gen_smalltalk` — 날씨/음식/감정/잡담 한·영)을
+  unknown 경계로 노출.
+- **label smoothing 0.1**(action 헤드): softmax 과신 억제 → OOD confidence 하락.
+- `lcm/eval.py`: confidence threshold sweep + 홀드아웃 일반화 측정.
+- `tests/test_accuracy.py`: 홀드아웃 fallback recall ≥0.7 회귀 가드.
+- infer threshold 0.6→0.7(calibration 후 비명령 fallback 1.0·명령 sml 0.96 지점).
+
+**결과**: 홀드아웃 fallback recall **0.43→0.90**(오인 conf 1.0→0.6~0.86). val 비명령
+fallback 0.95~1.0, 명령 sml 채택 0.96(CF 절약 유지). exact 0.91 유지. pytest **9/9**.
+
+**다음(iter 4 후보)**: ① 남은 오인 3건("주말에 뭐 할까"→hunt 0.62) — smalltalk 다양화 ②
+auto_combat/auto_potion 표현 증강(27·32) ③ slot 정확도 추가 개선(target 0.75) ④ dart
+BPE 포팅 + parity golden ⑤ confidence calibration 정량(ECE).
+
+
 ### iter 2 (2026-06-22)
 **자아비판**: action 0.90 vs exact 0.78 격차 = 슬롯 오류인데 *어느 헤드가 약한지* 측정
 도구가 없어 맹목 증강 중. unknown(잡담/질문) fallback이 깨지면 오작동.
