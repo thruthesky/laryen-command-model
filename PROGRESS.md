@@ -10,14 +10,27 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 11
-- 데이터: 합성 2572건 + on-the-fly 공백 augmentation. d_model 160·layers 3.
-- 정확도: **exact 0.926 / action 0.97**, 홀드아웃 fallback **0.97**, 공백 강건성 통과.
-- ONNX: 추론 p50 0.44ms, int8 1148KB, fp32/int8 parity 5/5, int8 vs fp32 ≥0.97.
-- pytest **14/14** + dart **3/3**(BPE·decode parity). 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 13
+- 데이터: 합성 2572건 + on-the-fly augmentation(공백 + 자모 변형). d_model 160·layers 3.
+- 정확도: **exact 0.942 / action 0.977**, 홀드아웃 fallback 0.90, 공백·유사발음 강건성 통과.
+- ONNX: 추론 0.44ms, int8 1148KB, parity 5/5, int8 vs fp32 ≥0.97.
+- pytest **15/15** + dart **3/3**. 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 13 (2026-06-22) — 유사발음(자모) STT 강건성(+exact 최고)
+**자아비판**: 공백 강건성은 했으나 sherpa STT 의 진짜 오류는 *자모 수준*(받침 탈락·모음
+혼동) — 유사발음 강건성 0.60("멈처"→open_menu, "사양"→unknown).
+
+**구현**: `dataset.py` 한글 자모 분해 기반 noise(`_jamo_noise` — 받침 탈락/모음 ±1) augment.
+`tests/test_accuracy.py::test_phonetic_robustness`(≥0.75 가드).
+
+**결과**: 유사발음 강건성 통과 + **exact 0.926→0.942(최고)**. 홀드아웃 0.97→0.90(노이즈
+다양화로 변동, 가드 통과). pytest 15/15, dart 3/3, parity 5/5.
+
+**다음(iter 14 후보)**: ① 라리엔 lib 통합(차단지점) ② 어순/문체 다양성 ③ distillation(CF
+차단지점) ④ 홀드아웃 회복(자모 noise 비율 튜닝).
 
 ### iter 12 (2026-06-22) — 완성 검증 + 통합 현황 정리
 **자아비판**: stop 0.43(iter4) 약점이 그 뒤 개선됐는지 미확인. 남은 작업이 차단지점이라

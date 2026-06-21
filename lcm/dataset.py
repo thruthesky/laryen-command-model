@@ -11,6 +11,21 @@ from torch.utils.data import Dataset
 from .schema import LabelSpace, encode_intent
 
 
+def _jamo_noise(text: str) -> str:
+    """한글 1글자의 받침 탈락 또는 모음 ±1 변형(STT 음소 오류 모사)."""
+    idxs = [i for i, c in enumerate(text) if "가" <= c <= "힣"]
+    if not idxs:
+        return text
+    i = random.choice(idxs)
+    code = ord(text[i]) - 0xAC00
+    cho, jung, jong = code // 588, (code % 588) // 28, code % 28
+    if jong and random.random() < 0.5:
+        jong = 0                                    # 받침 탈락(멈춤→머춤)
+    else:
+        jung = (jung + random.choice([-1, 1])) % 21  # 모음 혼동(사냥→사녕)
+    return text[:i] + chr(0xAC00 + (cho * 21 + jung) * 28 + jong) + text[i + 1:]
+
+
 def read_jsonl(path: Path | str) -> list[dict]:
     rows = []
     with open(path, encoding="utf-8") as f:
@@ -36,12 +51,15 @@ class LcmDataset(Dataset):
         return len(self.rows)
 
     def _augment_text(self, text: str) -> str:
-        """공백 변형(제거/중복) — STT 전사·사용자 입력의 띄어쓰기 불규칙에 강건하게."""
+        """STT/입력 노이즈 모사 — 공백 변형 + 자모 변형(받침 탈락·모음 혼동).
+        sherpa STT 는 음소 단위라 "멈춰"→"멈처"·"사냥"→"사양" 류 자모 오류가 실전 노이즈."""
         r = random.random()
-        if r < self.aug_p * 0.6:
+        if r < self.aug_p * 0.4:
             return text.replace(" ", "")           # 공백 전부 제거
-        if r < self.aug_p:
+        if r < self.aug_p * 0.55:
             return text.replace(" ", "  ")          # 공백 중복
+        if r < self.aug_p:
+            return _jamo_noise(text)                # 자모 변형(받침/모음)
         return text
 
     def __getitem__(self, i: int) -> dict:

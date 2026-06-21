@@ -100,6 +100,18 @@ def test_whitespace_robustness(rt):
     assert rate >= 0.85, f"공백 강건성 {rate:.2f} < 0.85 — 오답: {wrong}"
 
 
+def test_phonetic_robustness(rt):
+    """자모 변형(STT 음소 오류 — 받침 탈락/모음 혼동)에 어느 정도 강건해야 한다."""
+    cases = [
+        ("멈처", "stop"), ("사양하자", "hunt"), ("강남에서 사양", "hunt"),
+        ("체력 물략 줘", "potion"), ("인벤토리 여러", "open_menu"),
+        ("강철 세트 차용", "equip"), ("연습장 사냥", "hunt"), ("왼쪽으로 가줘", "move"),
+    ]
+    ok = sum(1 for t, w in cases if rt.predict(t)[0]["action"] == w)
+    rate = ok / len(cases)
+    assert rate >= 0.75, f"유사발음 강건성 {rate:.2f} < 0.75"
+
+
 def test_calibration_ece(rt):
     """confidence 가 실제 정확도와 일치(ECE)해야 threshold 판정이 신뢰된다(label smoothing)."""
     from lcm.bench import compute_ece
