@@ -1,0 +1,738 @@
+{
+  "_generated_by": "scripts/sync_ssot.py (라리엔 lib/ dart SSOT 추출 — 손수정 금지)",
+  "actions": [
+    "move",
+    "hunt",
+    "stop",
+    "potion",
+    "equip",
+    "unequip",
+    "auto_combat",
+    "auto_potion",
+    "open_menu",
+    "unknown"
+  ],
+  "landmarks": [
+    {
+      "id": "safe",
+      "ko": "안전지대",
+      "kind": "safe",
+      "x": 20.0,
+      "y": -1186.0,
+      "aliases": [
+        "안전지대",
+        "안전 지대",
+        "세이프존",
+        "세이프 존",
+        "세이프죤",
+        "쉼터",
+        "휴식처",
+        "마을",
+        "안전 구역",
+        "안전지역",
+        "safe zone",
+        "safezone",
+        "safe"
+      ],
+      "monsterHint": ""
+    },
+    {
+      "id": "low_level",
+      "ko": "초보 사냥터",
+      "kind": "hunt",
+      "x": 82.0,
+      "y": -1731.0,
+      "aliases": [
+        "초보 사냥터",
+        "초보사냥터",
+        "초보 사냥",
+        "초보",
+        "초급 사냥터",
+        "초급",
+        "beginner field",
+        "beginner"
+      ],
+      "monsterHint": "Bone"
+    },
+    {
+      "id": "practice",
+      "ko": "연습 사냥터",
+      "kind": "hunt",
+      "x": 1918.0,
+      "y": -1468.0,
+      "aliases": [
+        "연습 사냥터",
+        "연습사냥터",
+        "연습장",
+        "연습 사냥",
+        "연습",
+        "훈련장",
+        "훈련소",
+        "practice field",
+        "practice",
+        "training"
+      ],
+      "monsterHint": "Skeleton"
+    },
+    {
+      "id": "gangdong_flower_garden",
+      "ko": "강동 꽃밭",
+      "kind": "hunt",
+      "x": -1014.0,
+      "y": -3247.0,
+      "aliases": [
+        "강동 꽃밭 사냥터",
+        "강동 꽃밭",
+        "강동꽃밭",
+        "꽃밭 사냥터",
+        "꽃밭사냥터",
+        "꽃밭",
+        "gangdong flower garden",
+        "flower garden",
+        "flower"
+      ],
+      "monsterHint": "Bone, Coward"
+    },
+    {
+      "id": "gangdong_cherry_blossoms",
+      "ko": "강동 벚꽃",
+      "kind": "hunt",
+      "x": 1115.0,
+      "y": -2345.0,
+      "aliases": [
+        "강동 벚꽃 사냥터",
+        "강동벚꽃사냥터",
+        "강동 벚꽃",
+        "강동벚꽃",
+        "벚꽃 사냥터",
+        "벚꽃",
+        "gangdong cherry blossoms",
+        "cherry blossoms",
+        "cherry"
+      ],
+      "monsterHint": "Bone, Skirmisher"
+    },
+    {
+      "id": "gangdong_library",
+      "ko": "강동 도서관",
+      "kind": "hunt",
+      "x": 1050.0,
+      "y": -3270.0,
+      "aliases": [
+        "도서관 사냥터",
+        "도서관",
+        "강동 도서관",
+        "library",
+        "lib"
+      ],
+      "monsterHint": "Brute, Trickster"
+    },
+    {
+      "id": "gangdong_park",
+      "ko": "강동 공원",
+      "kind": "hunt",
+      "x": -1.0,
+      "y": -2824.0,
+      "aliases": [
+        "공원 사냥터",
+        "공원",
+        "강동 공원",
+        "park"
+      ],
+      "monsterHint": "Skirmisher, Ambusher"
+    },
+    {
+      "id": "gangseo_trail",
+      "ko": "강서 산책로",
+      "kind": "hunt",
+      "x": -923.0,
+      "y": 1143.0,
+      "aliases": [
+        "산책로 사냥터",
+        "산책로",
+        "강서 산책로",
+        "산책길",
+        "trail"
+      ],
+      "monsterHint": "Brute, Trickster, Caster"
+    },
+    {
+      "id": "gangseo_mall",
+      "ko": "강서 쇼핑몰",
+      "kind": "hunt",
+      "x": 1080.0,
+      "y": 2408.0,
+      "aliases": [
+        "쇼핑몰 사냥터",
+        "쇼핑몰",
+        "강서 쇼핑몰",
+        "몰",
+        "shopping mall",
+        "mall"
+      ],
+      "monsterHint": "Ambusher, Skirmisher, PackHunter"
+    },
+    {
+      "id": "gangbuk_azalea",
+      "ko": "강북 진달래 동산",
+      "kind": "hunt",
+      "x": -4668.0,
+      "y": -2522.0,
+      "aliases": [
+        "진달래 동산 사냥터",
+        "진달래 동산",
+        "진달래동산",
+        "진달래 사냥터",
+        "진달래",
+        "azalea hill",
+        "azalea"
+      ],
+      "monsterHint": "Caster, Brute"
+    },
+    {
+      "id": "gangbuk_pine_trees",
+      "ko": "강북 소나무 숲",
+      "kind": "hunt",
+      "x": -4517.0,
+      "y": 1498.0,
+      "aliases": [
+        "소나무 숲 사냥터",
+        "소나무 숲",
+        "소나무숲",
+        "소나무 밭",
+        "소나무밭",
+        "소나무",
+        "pine forest",
+        "pine tree",
+        "pine"
+      ],
+      "monsterHint": "PackHunter, Skirmisher"
+    },
+    {
+      "id": "gangbuk_ray_station",
+      "ko": "강북 가오리역",
+      "kind": "hunt",
+      "x": -7823.0,
+      "y": 1471.0,
+      "aliases": [
+        "가오리역 사냥터",
+        "가오리역",
+        "가오리 역",
+        "가오리",
+        "ray station",
+        "ray",
+        "gaori station"
+      ],
+      "monsterHint": "Demonic, Caster"
+    },
+    {
+      "id": "gangbuk_wash_alley",
+      "ko": "강북 빨래골목",
+      "kind": "hunt",
+      "x": -8154.0,
+      "y": -2094.0,
+      "aliases": [
+        "빨래 골목 사냥터",
+        "빨래골목 사냥터",
+        "빨래 골목",
+        "빨래골목",
+        "빨래",
+        "wash alley",
+        "laundry alley"
+      ],
+      "monsterHint": "Guardian, PackHunter"
+    },
+    {
+      "id": "kwanak_k_art_hall",
+      "ko": "관악 예술의전당",
+      "kind": "hunt",
+      "x": -471.0,
+      "y": 8037.0,
+      "aliases": [
+        "예술의전당 사냥터",
+        "예술의 전당",
+        "예술의전당",
+        "예당",
+        "art hall",
+        "arts center",
+        "k art hall"
+      ],
+      "monsterHint": "Paladin, BiBot"
+    },
+    {
+      "id": "kwanak_mountain",
+      "ko": "관악산",
+      "kind": "hunt",
+      "x": -7316.0,
+      "y": 6695.0,
+      "aliases": [
+        "관악산 사냥터",
+        "관악산",
+        "관악 산",
+        "gwanak mountain",
+        "kwanak mountain"
+      ],
+      "monsterHint": "Guardian, Demonic"
+    },
+    {
+      "id": "kwanak_boramae",
+      "ko": "관악 보라매 공원",
+      "kind": "hunt",
+      "x": -4361.0,
+      "y": 5362.0,
+      "aliases": [
+        "보라매 공원 사냥터",
+        "보라매 공원",
+        "보라매공원",
+        "보라매",
+        "boramae park",
+        "boramae"
+      ],
+      "monsterHint": "Caster, BiBot"
+    },
+    {
+      "id": "kwanak_sharosoo",
+      "ko": "관악 샤로수길",
+      "kind": "hunt",
+      "x": -4292.0,
+      "y": 7604.0,
+      "aliases": [
+        "샤로수길 사냥터",
+        "샤로수길",
+        "샤로수 길",
+        "샤로수",
+        "sharosu gil",
+        "sharosoo"
+      ],
+      "monsterHint": "Paladin, PackHunter"
+    },
+    {
+      "id": "kwanak_nakseongdae",
+      "ko": "관악 낙성대",
+      "kind": "hunt",
+      "x": 3448.0,
+      "y": 7120.0,
+      "aliases": [
+        "낙성대 사냥터",
+        "낙성대",
+        "nakseongdae"
+      ],
+      "monsterHint": "Guardian, Demonic"
+    },
+    {
+      "id": "kwanak_lucky",
+      "ko": "관악 행운동",
+      "kind": "hunt",
+      "x": 7240.0,
+      "y": 6720.0,
+      "aliases": [
+        "행운동 사냥터",
+        "행운동",
+        "행운 동",
+        "lucky",
+        "lucky town"
+      ],
+      "monsterHint": "DemonicKing, Paladin"
+    },
+    {
+      "id": "dongdaemun_proposal_wall",
+      "ko": "동대문 프로포즈 벽",
+      "kind": "hunt",
+      "x": -6771.0,
+      "y": -7607.0,
+      "aliases": [
+        "프로포즈 벽 사냥터",
+        "프로포즈 벽",
+        "프로포즈벽",
+        "프로포즈",
+        "proposal wall",
+        "proposal"
+      ],
+      "monsterHint": "DemonicKing, Morak"
+    },
+    {
+      "id": "dongdaemun_jangan_cherry_blossom_road",
+      "ko": "동대문 장안 벚꽃길",
+      "kind": "hunt",
+      "x": -2235.0,
+      "y": -7786.0,
+      "aliases": [
+        "장안 벚꽃길 사냥터",
+        "장안 벚꽃길",
+        "장안벚꽃길",
+        "장안 벚꽃",
+        "장안벚꽃",
+        "장안",
+        "jangan cherry blossom road",
+        "jangan"
+      ],
+      "monsterHint": "Demonic, Morak"
+    },
+    {
+      "id": "dongdaemun_antique_art_street",
+      "ko": "동대문 골동품 거리",
+      "kind": "hunt",
+      "x": 2176.0,
+      "y": -7811.0,
+      "aliases": [
+        "골동품 거리 사냥터",
+        "골동품 거리",
+        "골동품거리",
+        "골동품",
+        "antique art street",
+        "antique street",
+        "antique"
+      ],
+      "monsterHint": "Morak, Zorak"
+    },
+    {
+      "id": "dongdaemun_octopus_alley",
+      "ko": "동대문 낙지골목",
+      "kind": "hunt",
+      "x": 6567.0,
+      "y": -7114.0,
+      "aliases": [
+        "낙지 골목 사냥터",
+        "낙지골목 사냥터",
+        "낙지 골목",
+        "낙지골목",
+        "낙지",
+        "octopus alley",
+        "octopus"
+      ],
+      "monsterHint": "Zorak, DemonicKing"
+    },
+    {
+      "id": "gangnam_garosoo",
+      "ko": "강남 가로수길",
+      "kind": "hunt",
+      "x": 4250.0,
+      "y": 1574.0,
+      "aliases": [
+        "가로수길 사냥터",
+        "가로수길",
+        "가로수 길",
+        "가로수",
+        "garosu gil",
+        "garosoo",
+        "garosu"
+      ],
+      "monsterHint": "Zorak, Fred"
+    },
+    {
+      "id": "gangnam_station",
+      "ko": "강남역",
+      "kind": "hunt",
+      "x": 4418.0,
+      "y": -2280.0,
+      "aliases": [
+        "강남역 사냥터",
+        "강남역",
+        "강남 역",
+        "gangnam station",
+        "gangnamstation"
+      ],
+      "monsterHint": "Xbot, Swat"
+    },
+    {
+      "id": "gangnam_apgujeong",
+      "ko": "강남 압구정",
+      "kind": "hunt",
+      "x": 7676.0,
+      "y": -164.0,
+      "aliases": [
+        "압구정 사냥터",
+        "압구정역",
+        "압구정",
+        "apgujeong"
+      ],
+      "monsterHint": "Mira, Hellion"
+    },
+    {
+      "id": "gangdong",
+      "ko": "강동",
+      "kind": "hunt",
+      "x": 162.0,
+      "y": -3039.0,
+      "aliases": [
+        "강동",
+        "gangdong"
+      ],
+      "monsterHint": ""
+    },
+    {
+      "id": "gangbuk",
+      "ko": "강북",
+      "kind": "hunt",
+      "x": -6080.0,
+      "y": -480.0,
+      "aliases": [
+        "강북",
+        "gangbuk"
+      ],
+      "monsterHint": ""
+    },
+    {
+      "id": "gangnam",
+      "ko": "강남",
+      "kind": "hunt",
+      "x": 5992.0,
+      "y": -184.0,
+      "aliases": [
+        "강남",
+        "gangnam"
+      ],
+      "monsterHint": ""
+    },
+    {
+      "id": "gangseo",
+      "ko": "강서",
+      "kind": "hunt",
+      "x": 240.0,
+      "y": 1912.0,
+      "aliases": [
+        "강서",
+        "gangseo"
+      ],
+      "monsterHint": ""
+    },
+    {
+      "id": "dongdaemun",
+      "ko": "동대문",
+      "kind": "hunt",
+      "x": -48.0,
+      "y": -7104.0,
+      "aliases": [
+        "동대문",
+        "dongdaemun"
+      ],
+      "monsterHint": ""
+    },
+    {
+      "id": "kwanak",
+      "ko": "관악",
+      "kind": "hunt",
+      "x": -28.0,
+      "y": 6700.0,
+      "aliases": [
+        "관악",
+        "kwanak",
+        "gwanak"
+      ],
+      "monsterHint": ""
+    }
+  ],
+  "landmark_ids": [
+    "safe",
+    "low_level",
+    "practice",
+    "gangdong_flower_garden",
+    "gangdong_cherry_blossoms",
+    "gangdong_library",
+    "gangdong_park",
+    "gangseo_trail",
+    "gangseo_mall",
+    "gangbuk_azalea",
+    "gangbuk_pine_trees",
+    "gangbuk_ray_station",
+    "gangbuk_wash_alley",
+    "kwanak_k_art_hall",
+    "kwanak_mountain",
+    "kwanak_boramae",
+    "kwanak_sharosoo",
+    "kwanak_nakseongdae",
+    "kwanak_lucky",
+    "dongdaemun_proposal_wall",
+    "dongdaemun_jangan_cherry_blossom_road",
+    "dongdaemun_antique_art_street",
+    "dongdaemun_octopus_alley",
+    "gangnam_garosoo",
+    "gangnam_station",
+    "gangnam_apgujeong",
+    "gangdong",
+    "gangbuk",
+    "gangnam",
+    "gangseo",
+    "dongdaemun",
+    "kwanak"
+  ],
+  "archetypes": [
+    "Brute",
+    "Caster",
+    "Skirmisher",
+    "Coward",
+    "PackHunter",
+    "Guardian",
+    "Ambusher",
+    "Trickster",
+    "Bone",
+    "Demonic",
+    "Paladin",
+    "DemonicKing",
+    "Morak",
+    "Zorak",
+    "Fred",
+    "Swat",
+    "Xbot",
+    "Mira",
+    "Hellion",
+    "BiBot",
+    "Skeleton",
+    "GreenRobot",
+    "Gozila",
+    "Mecha",
+    "GuitarBot",
+    "Ganfaul",
+    "Mannequin",
+    "Pirate",
+    "PumkinHulk",
+    "SkeletonZombie",
+    "Vampire",
+    "Yaku"
+  ],
+  "potions": [
+    "hp",
+    "run",
+    "atkspeed",
+    "crit"
+  ],
+  "gear_sets": [
+    "victor",
+    "immortal",
+    "plate"
+  ],
+  "gear_singles": [
+    "victor_weapon",
+    "victor_armor",
+    "victor_accessory",
+    "immortal_weapon",
+    "immortal_armor",
+    "immortal_accessory",
+    "plate_weapon",
+    "plate_armor",
+    "plate_accessory"
+  ],
+  "unequip_slots": [
+    "weapon",
+    "armor",
+    "accessory"
+  ],
+  "combat_modes": [
+    "off",
+    "magnetic",
+    "auto_hunt"
+  ],
+  "menu_targets": [
+    "menu",
+    "chat",
+    "groupchat",
+    "inventory",
+    "potion",
+    "sound",
+    "autocombat"
+  ],
+  "direction_buckets": [
+    0.0,
+    22.5,
+    45.0,
+    67.5,
+    90.0,
+    112.5,
+    135.0,
+    157.5,
+    180.0,
+    202.5,
+    225.0,
+    247.5,
+    270.0,
+    292.5,
+    315.0,
+    337.5
+  ],
+  "fast_path": {
+    "version": 1,
+    "stop": [
+      "멈춰",
+      "멈춰라",
+      "멈춤",
+      "멈춰줘",
+      "정지",
+      "그만",
+      "그만해",
+      "스톱",
+      "스탑",
+      "stop",
+      "halt"
+    ],
+    "potionHp": [
+      "물약",
+      "물약줘",
+      "물약먹어",
+      "물약사용",
+      "물약써",
+      "물약주세요",
+      "포션",
+      "체력물약",
+      "회복물약",
+      "potion",
+      "heal",
+      "hppotion"
+    ],
+    "menu": {
+      "menu": [
+        "메뉴",
+        "메뉴열어",
+        "메뉴를열어",
+        "메뉴열어줘",
+        "메뉴좀",
+        "메뉴창",
+        "메뉴보여",
+        "menu"
+      ],
+      "chat": [
+        "챗봇",
+        "ai챗봇",
+        "챗봇열어",
+        "도우미",
+        "도우미열어",
+        "라리아",
+        "chatbot"
+      ],
+      "groupchat": [
+        "채팅",
+        "채팅열어",
+        "채팅방",
+        "전체채팅",
+        "그룹채팅",
+        "chat"
+      ],
+      "inventory": [
+        "인벤토리",
+        "인벤",
+        "장비창",
+        "인벤토리열어",
+        "장비창열어",
+        "inventory"
+      ],
+      "potion": [
+        "물약창",
+        "물약창열어",
+        "물약메뉴",
+        "포션창"
+      ],
+      "sound": [
+        "소리설정",
+        "사운드설정",
+        "음량설정",
+        "볼륨설정",
+        "소리설정열어",
+        "sound"
+      ],
+      "autocombat": [
+        "자동전투설정",
+        "자동사냥설정",
+        "전투설정"
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+
+# 학습 산출물 (재현 가능 — 커밋하지 않는다)
+data/generated/
+checkpoints/
+runs/
+*.onnx
+*.bin
+*.pt
+*.ckpt
+
+# 학습 산출물 전체 (토크나이저·onnx·external data — 모두 재현 가능)
+artifacts/
+
+# 모델 캐시 (라리엔 .ai_models 관례)
+.ai_models/
+
+# OS
+.DS_Store
