@@ -112,6 +112,16 @@ def test_phonetic_robustness(rt):
     assert rate >= 0.75, f"유사발음 강건성 {rate:.2f} < 0.75"
 
 
+def test_edge_cases_safe(rt):
+    """이상 입력(빈·구두점·이모지·초장문)에 crash 없고, 의미 문자 없으면 fallback."""
+    for t in ["", " ", "   ", "!!!", "...", "?????", "😀😀", "@#$%^", "\n\t"]:
+        res = rt.classify(t)
+        assert res["layer"] == "fallback", f"'{t}' 의미문자 없는데 {res['layer']}"
+    for t in ["a" * 500, "강" * 200, "1 2 3 4 5"]:
+        res = rt.classify(t)  # crash 없으면 OK
+        assert res["layer"] in ("sml", "fallback")
+
+
 def test_calibration_ece(rt):
     """confidence 가 실제 정확도와 일치(ECE)해야 threshold 판정이 신뢰된다(label smoothing)."""
     from lcm.bench import compute_ece

@@ -13,9 +13,13 @@ classify() 의 반환(layer, intent)을 그대로 따른다 — 'sml' 이면 즉
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 import torch
+
+# 의미 있는 문자(한/영/숫자) — 없으면(빈·구두점·이모지만) 명령일 수 없어 fallback.
+_MEANINGFUL = re.compile(r"[가-힣a-zA-Z0-9]")
 
 from .model import LcmEncoder, action_confidence, predict_heads
 from .schema import LabelSpace, decode_intent, load_ssot, to_voice_command_json
@@ -53,6 +57,10 @@ class LcmRuntime:
 
     def classify(self, text: str) -> dict:
         """3계층 중 2차(SML) 판정 결과. layer='sml' 또는 'fallback'."""
+        # 빈·구두점·이모지만(의미 문자 없음) → 무음/노이즈 전사일 수 있어 즉시 fallback
+        # (모델이 빈 입력을 명령으로 과신하는 것을 차단 — edge case 안전성).
+        if not _MEANINGFUL.search(text):
+            return {"layer": "fallback", "confidence": 0.0, "intent": None}
         intent, conf = self.predict(text)
         if intent["action"] == "unknown" or conf < self.threshold:
             return {"layer": "fallback", "confidence": conf, "intent": None}

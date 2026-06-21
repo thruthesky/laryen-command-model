@@ -19,6 +19,21 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 15 (2026-06-22) — edge case 안전성(빈·구두점·초장문)
+**자아비판**: 정상/노이즈 입력은 견고하나 실전 STT 의 이상 출력(빈 문자열·구두점·이모지·
+초장문)에 대한 안전성 미검증.
+
+**핵심 발견**: 빈 문자열 ""·"?????"·"..." 이 **sml conf 0.91 로 명령 분류**(무음/노이즈를
+명령 실행 위험). crash 는 없음.
+
+**구현**: `infer.classify` 가드 — 의미 문자(한/영/숫자) 없으면 즉시 fallback(`_MEANINGFUL`
+정규식). `tests/test_accuracy.py::test_edge_cases_safe`(빈/구두점→fallback, 초장문 crash 없음).
+
+**결과**: 빈·구두점·이모지 → fallback(안전), 초장문 crash 없음. pytest 16/16.
+
+**다음(iter 16 후보)**: ① 라리엔 lib 통합(차단지점) ② 어순/문체 다양성 ③ distillation
+(CF 차단지점).
+
 ### iter 14 (2026-06-22) — threshold 재최적화(학습 없이 OOD 안전↑)
 **자아비판**: iter13 자모 noise 로 홀드아웃 fallback 0.97→0.90 변동. 학습 반복 대신 효율적
 해법 모색.
