@@ -64,6 +64,12 @@ laryen-command-model/
 ## 사용법
 
 ```bash
+bash scripts/run_all.sh                    # 전체 재현(sync→gen→train→onnx→bench→eval→test)
+bash scripts/run_all.sh 80                 #   (epochs 인자, 빠른 반복)
+```
+
+또는 단계별:
+```bash
 uv sync --extra dev                       # 의존성(torch/tokenizers/onnx…)
 
 python scripts/sync_ssot.py               # 1) 라리엔 dart → config/ssot.json

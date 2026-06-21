@@ -19,6 +19,17 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 8 (2026-06-22) — 전체 재현 자동화
+**자아비판**: 파이프라인 8단계가 흩어져 반복이 번거로움(100회 자율 반복에 비효율).
+
+**구현**: `scripts/run_all.sh` — sync→gen→train→onnx→bench→eval→test 일괄(epochs 인자).
+README 사용법 갱신.
+
+**결과**: 문법 검증 + sync/gen 실증. 한 명령으로 전체 재현·반복 가능. pytest 13/13 유지.
+
+**다음(iter 9 후보)**: ① stop/auto_combat 혼동 직접 수정 ② 실제 dart 포팅(라리엔 lib) ③
+distillation(CF — 비용 차단지점).
+
 ### iter 7 (2026-06-22) — int8 양자화 배포 안전성
 **자아비판**: int8 을 배포 대상으로 만들었으나 fp32 대비 정확도 손실을 *전체 val* 에서
 측정 안 함(export 검증은 5발화뿐) — 양자화가 결정을 바꾸면 배포 위험.
