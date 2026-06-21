@@ -87,6 +87,19 @@ def test_holdout_fallback_recall(rt):
     assert recall >= 0.7, f"홀드아웃 fallback recall {recall:.2f} < 0.7 — OOD 과신: {misfired[:8]}"
 
 
+def test_whitespace_robustness(rt):
+    """공백 변형(STT 전사·사용자 입력의 띄어쓰기 불규칙)에 강건해야 한다."""
+    cases = [
+        ("강남에서사냥", "hunt"), ("왼쪽으로가", "move"), ("체력물약먹어", "potion"),
+        ("강철세트착용", "equip"), ("인벤토리열어", "open_menu"), ("자동사냥켜", "auto_combat"),
+        ("연습장에서사냥", "hunt"), ("물약 줘", "potion"),
+    ]
+    ok = sum(1 for t, w in cases if rt.predict(t)[0]["action"] == w)
+    rate = ok / len(cases)
+    wrong = [(t, rt.predict(t)[0]["action"]) for t, w in cases if rt.predict(t)[0]["action"] != w]
+    assert rate >= 0.85, f"공백 강건성 {rate:.2f} < 0.85 — 오답: {wrong}"
+
+
 def test_calibration_ece(rt):
     """confidence 가 실제 정확도와 일치(ECE)해야 threshold 판정이 신뢰된다(label smoothing)."""
     from lcm.bench import compute_ece

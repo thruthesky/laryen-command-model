@@ -10,14 +10,27 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 1 종료 시점
-- 데이터: 합성 1572건(균형 개선: stop 27·auto_potion 32·unequip 56 …)
-- 학습: train loss 0.010, **val action_acc 0.90 / exact_acc 0.78**(608→1415 train)
-- pytest: **8/8 통과**(schema round-trip 3 + ONNX Runtime 2 + golden 정확도 3)
-- ONNX export: fp32 dynamic(parity maxdiff 0.0) + int8 고정 649KB(argmax 5/5 일치)
-- 완료조건 1·2 ✅ 증명, 3·4 진행(정확도 0.55→0.78)
+## 현재 상태(메트릭) — iter 11
+- 데이터: 합성 2572건 + on-the-fly 공백 augmentation. d_model 160·layers 3.
+- 정확도: **exact 0.926 / action 0.97**, 홀드아웃 fallback **0.97**, 공백 강건성 통과.
+- ONNX: 추론 p50 0.44ms, int8 1148KB, fp32/int8 parity 5/5, int8 vs fp32 ≥0.97.
+- pytest **14/14** + dart **3/3**(BPE·decode parity). 완료조건 1·2·3·4 ✅.
+
 
 ## Iteration 로그
+
+### iter 11 (2026-06-22) — STT 공백 강건성(+전반 개선)
+**자아비판**: STT 전사·사용자 입력은 띄어쓰기가 불규칙한데 학습은 공백 있는 표현 위주 →
+강건성 0.79("체력물약먹어"→move, "강철세트착용"→unknown).
+
+**구현**: `dataset.py` on-the-fly 공백 augmentation(매 epoch 확률적 공백 제거/중복, train
+만). `tests/test_accuracy.py::test_whitespace_robustness`(≥0.85 가드).
+
+**결과**: 공백 강건성 통과 + **전반 개선**(augmentation 의 regularization·OOD 경계 강화 효과):
+exact 0.899→**0.926**, 홀드아웃 fallback 0.87→**0.97**. pytest 14/14, dart 3/3, parity 5/5.
+
+**다음(iter 12 후보)**: ① 라리엔 lib 통합(onnxruntime dart 패키지=비공식 차단지점·사용자
+승인 필요) ② stop 잔존 혼동 ③ distillation(CF — 차단지점) ④ 더 다양한 STT 노이즈(유사발음).
 
 ### iter 10 (2026-06-22) — Dart decode 포팅(통합 완결)
 **자아비판**: dart 토큰화는 됐으나 모델 출력(헤드 인덱스)→VoiceIntent JSON *디코딩* 도 dart
