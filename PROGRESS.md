@@ -10,13 +10,26 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 22
-- 정확도: **exact 0.961**, 홀드아웃 0.97. 강건성: 공백·유사발음·구어체·edge 통과.
-- 라우팅: 단일→sml / 복합·상대·부정·다중동작→fallback. 숫자%(10~90). monsters FP 0·TP 유지.
-- pytest **21/21** + dart **7/7**. 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 23
+- 정확도: **exact 0.959**, 홀드아웃 0.97. 강건성: 공백·유사발음·구어체·존댓말·edge 통과.
+- 라우팅: 단일/존댓말/영어별칭→sml / 복합·상대·부정·다중→fallback. 숫자%·monsters FP 0.
+- pytest **22/22** + dart **7/7**. 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 23 (2026-06-22) — 존댓말 + 영어별칭+조사
+**자아비판**: 존댓말("가 주실래요"·"주시겠어요")·영어별칭+조사("safe zone으로 가")가
+fallback/오류("safe zone"→direction 90). 실사용 흔한데 미학습.
+
+**구현**: `_gen_polite` — 존댓말 어미(주세요/주실래요/주시겠어요) × action. _gen_move 영문
+별칭에 한글 조사 버전("safe zone으로 가") 추가. `test_polite_and_english_alias` 가드.
+
+**결과**: 존댓말 모두 sml(move/stop/potion/open_menu), "safe zone으로 가"→safe(영어별칭
+해결). exact 0.959, pytest 22/22, dart 7/7.
+
+**다음(iter 24 후보)**: ① 동의어/은어("물약 빨아"·"ㄱㄱ") ② 다중동작 LCM 직접(actions 배열)
+③ 멀티턴 맥락("거기서 사냥") ④ 오타(자음/모음 키 인접).
 
 ### iter 22 (2026-06-22) — monsters false positive 제거 + phonetic 안정화
 **자아비판**: iter21 잔존 — "체력 60%면"(monster 미언급)에 Mecha 삽입(false positive).

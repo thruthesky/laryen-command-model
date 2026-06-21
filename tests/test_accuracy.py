@@ -146,6 +146,23 @@ def test_location_routing(rt):
     assert len(bad) <= 1, f"복합/상대 위치인데 sml(자신있게 틀림): {bad}"
 
 
+def test_polite_and_english_alias(rt):
+    """존댓말("가 주실래요")·영어별칭+조사("safe zone으로 가")가 sml 로 정확 처리돼야 한다."""
+    cases = [
+        ("강남으로 가 주실래요", "move"), ("멈춰 주세요", "stop"),
+        ("물약 주세요", "potion"), ("인벤토리 열어 주세요", "open_menu"),
+        ("safe zone으로 가", "move"),
+    ]
+    ok = sum(1 for t, w in cases if (r := rt.classify(t))["layer"] == "sml"
+             and r["command"]["actions"][0]["action"] == w)
+    assert ok >= len(cases) - 1, f"존댓말/영어별칭 {ok}/{len(cases)}"
+    # "safe zone으로 가" 는 안전지대로(direction 아님).
+    r = rt.classify("safe zone으로 가")
+    if r["layer"] == "sml":
+        assert r["command"]["actions"][0].get("location") == "safe", \
+            f"safe zone → {r['command']['actions'][0]}"
+
+
 def test_monsters_no_false_positive(rt):
     """monster 미언급 hunt 는 monsters 가 비어야 한다(가중 3x 의 false positive 차단)."""
     cases = ["강남에서 사냥", "연습장에서 사냥해", "강남에서 사냥하고 체력 60%면 피신",

@@ -113,9 +113,12 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
             if any("가" <= c <= "힣" for c in al):  # 한글 별칭
                 for v in rng.sample(move_verbs, k=min(3, len(move_verbs))):
                     out.append((f"{_ko_obj(al)} {v}".strip(), intent))
-            else:  # 영문 별칭
+            else:  # 영문 별칭 — 영어 단독 + 한글 조사 혼용("safe zone으로 가").
                 out.append((f"move to {al}", intent))
                 out.append((f"go to {al}", intent))
+                out.append((f"{al}으로 가", intent))
+                out.append((f"{al}로 이동", intent))
+                out.append((f"{al}으로 이동해", intent))
     # 안전지대 대기(move location=safe) — '대기/쉬어'도 move(safe).
     safe_phr = ["세이프존에서 대기해", "안전지대로 가서 쉬어", "쉼터로 가", "마을로 이동",
                 "안전지대로 피신", "세이프존으로 가줘", "안전한 곳으로 가", "대기 장소로 가"]
@@ -369,6 +372,34 @@ def _gen_negation_compound(ssot, rng) -> list[tuple[str, dict]]:
     return out
 
 
+def _gen_polite(ssot, rng) -> list[tuple[str, dict]]:
+    """존댓말 어미("~해 주세요/주실래요/주시겠어요") — 실사용 흔한 공손 표현 sml 화."""
+    out = []
+    hon = ["주세요", "주실래요", "주시겠어요", "주시겠어요?", "줄래요"]
+    # stop
+    for v in ["멈춰", "정지해", "그만해", "멈춰"]:
+        for h in rng.sample(hon, k=3):
+            out.append((f"{v} {h}", {"action": "stop"}))
+    # potion(hp 기본)
+    for v in ["물약", "체력 물약", "회복 물약"]:
+        for h in rng.sample(hon, k=2):
+            out.append((f"{v} {h}", {"action": "potion", "potion": "hp"}))
+    # open_menu
+    menu_ko = {"menu": "메뉴", "inventory": "인벤토리", "groupchat": "채팅", "potion": "물약창"}
+    for tgt, nm in menu_ko.items():
+        for h in rng.sample(hon, k=2):
+            out.append((f"{nm} 열어 {h}", {"action": "open_menu", "target": tgt}))
+    # move / hunt (landmark)
+    for lm in ssot["landmarks"]:
+        al = lm["ko"]
+        for h in rng.sample(hon, k=2):
+            out.append((f"{al}으로 가 {h}", {"action": "move", "location": lm["id"]}))
+        if lm["kind"] == "hunt":
+            for h in rng.sample(hon, k=2):
+                out.append((f"{al}에서 사냥해 {h}", {"action": "hunt", "location": lm["id"]}))
+    return out
+
+
 def _gen_smalltalk(rng) -> list[tuple[str, dict]]:
     """게임과 *무관한* 일상 문장을 unknown 으로(outlier exposure). softmax 분류기는
     학습 분포 밖(OOD) 입력을 가까운 명령으로 *과신* 하는데("날씨 좋다"→hunt conf 1.0),
@@ -410,6 +441,7 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs += _gen_questions(ssot, rng)
     pairs += _gen_complex_location(ssot, rng)
     pairs += _gen_negation_compound(ssot, rng)
+    pairs += _gen_polite(ssot, rng)
     pairs += _gen_smalltalk(rng)
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).
     dedup: dict[str, dict] = {}
