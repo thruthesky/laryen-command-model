@@ -19,6 +19,20 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 9 (2026-06-22) — Dart BPE 실증(플러터 토큰화 동작)
+**자아비판**: "플러터 ONNX Runtime 내장"의 토큰화를 파이썬 레퍼런스로만 증명 — *실제 Dart
+코드로 동작* 함을 보이지 못함.
+
+**구현**: `dart/`(순수 Dart 패키지) — `lcm_tokenizer.dart`(bpe_ref 1:1 포팅: bytes_to_unicode
++ GPT-2 RegExp(unicode) + BPE merges + vocab) + `test/tokenizer_test.dart`(golden parity).
+
+**결과**: `dart test` 통과 — Dart BPE == 파이썬 golden(text→ids 1:1, flutter 빌드 없이 순수
+dart). **플러터 토큰화 실증** → 라리엔은 이 파일 + onnxruntime dart 패키지로 추론. py pytest
+13/13 유지. (onnxruntime 추론 자체는 라리엔 lib 통합 단계 — flutter 빌드/DTD 필요.)
+
+**다음(iter 10 후보)**: ① 라리엔 lib 실제 통합(onnxruntime_flutter + 3계층 — flutter/DTD) ②
+decode_intent dart 포팅 + golden ③ stop/auto_combat 혼동 ④ distillation(CF — 차단지점).
+
 ### iter 8 (2026-06-22) — 전체 재현 자동화
 **자아비판**: 파이프라인 8단계가 흩어져 반복이 번거로움(100회 자율 반복에 비효율).
 

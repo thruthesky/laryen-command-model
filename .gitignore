@@ -21,5 +21,10 @@ artifacts/
 # 모델 캐시 (라리엔 .ai_models 관례)
 .ai_models/
 
+# Dart 참조 패키지 빌드 산출물
+dart/.dart_tool/
+dart/pubspec.lock
+dart/.packages
+
 # OS
 .DS_Store

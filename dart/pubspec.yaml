@@ -1,0 +1,7 @@
+name: lcm_tokenizer
+description: 라리엔 Command Model 용 ByteLevelBPE 토크나이저 — 라리엔 Flutter 앱이 가져갈 참조 구현.
+publish_to: none
+environment:
+  sdk: ^3.0.0
+dev_dependencies:
+  test: ^1.24.0
