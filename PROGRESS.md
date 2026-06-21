@@ -19,6 +19,19 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 7 (2026-06-22) — int8 양자화 배포 안전성
+**자아비판**: int8 을 배포 대상으로 만들었으나 fp32 대비 정확도 손실을 *전체 val* 에서
+측정 안 함(export 검증은 5발화뿐) — 양자화가 결정을 바꾸면 배포 위험.
+
+**구현**: `tests/test_onnx.py::test_int8_accuracy_preserved` — val 전체에서 int8
+onnxruntime argmax 가 fp32(PyTorch) 와 ≥0.97 일치 가드(ckpt 조건부).
+
+**결과**: int8 vs fp32 action 일치 ≥0.97 통과 — **양자화 배포 안전 정량 검증**. pytest 13/13.
+
+**다음(iter 8 후보)**: ① 전체 재현 스크립트(sync→gen→train→export→test 일괄) ② stop/
+auto_combat 혼동 ③ 실제 dart 포팅(라리엔 lib) ④ distillation(CF — 비용 차단지점).
+
+
 ### iter 6 (2026-06-22) — 모바일 실용성·calibration 정량
 **자아비판**: ONNX Runtime "동작"은 증명했으나 *추론 지연(모바일 실용성)*·*confidence
 신뢰도(calibration)* 를 측정한 적 없음 — "플러터 내장"의 실전 적합성 미검증.

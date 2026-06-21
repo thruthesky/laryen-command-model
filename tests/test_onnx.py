@@ -70,6 +70,57 @@ def test_onnxruntime_parity(tmp_path):
             err_msg=f"head '{name}' onnxruntime != torch")
 
 
+def test_int8_accuracy_preserved(tmp_path):
+    """학습된 int8 ONNX 가 fp32(PyTorch) 대비 action 결정을 보존(양자화 배포 안전성).
+
+    체크포인트가 있을 때만(없으면 skip). val 전체에서 int8 onnxruntime argmax 가 PyTorch
+    argmax 와 거의 일치(≥0.97)해야 양자화 모델을 안심하고 배포한다.
+    """
+    import pytest
+    from lcm.export_onnx import CKPT, PAD_LEN as PL, _load_model
+    if not CKPT.exists():
+        pytest.skip("학습된 체크포인트 없음")
+    import onnxruntime as ort
+    from onnxruntime.quantization import QuantType, quantize_dynamic
+    from lcm.dataset import read_jsonl
+
+    model, ls, tk, c = _load_model()
+    wrap = ExportWrapper(model)
+    onnx_path = tmp_path / "m.onnx"
+    head_names = _export_fixed(wrap, c, onnx_path)
+    int8_path = tmp_path / "m.int8.onnx"
+    quantize_dynamic(str(onnx_path), str(int8_path), weight_type=QuantType.QInt8)
+    sess = ort.InferenceSession(str(int8_path), providers=["CPUExecutionProvider"])
+    ai = head_names.index("action")
+
+    val = read_jsonl(Path(__file__).resolve().parents[1] / "data" / "generated" / "val.jsonl")
+    agree = 0
+    for r in val:
+        raw = tk.encode(r["text"]).ids[:PL]
+        ids = np.full((1, PL), c["pad_id"], dtype=np.int64); ids[0, :len(raw)] = raw
+        attn = np.zeros((1, PL), dtype=np.int64); attn[0, :len(raw)] = 1
+        o = sess.run(None, {"input_ids": ids, "attention_mask": attn})
+        with torch.no_grad():
+            t = wrap(torch.tensor(ids), torch.tensor(attn))
+        if int(o[ai].argmax()) == int(t[ai].argmax()):
+            agree += 1
+    rate = agree / len(val)
+    assert rate >= 0.97, f"int8 vs fp32 action 일치 {rate:.3f} < 0.97 — 양자화 손실 과다"
+
+
+def _export_fixed(wrap, c, path: Path) -> list[str]:
+    """고정 길이 int8 호환 export(legacy)."""
+    head_names = wrap.head_names
+    pids = torch.full((1, PAD_LEN), c["pad_id"], dtype=torch.long)
+    pattn = torch.ones((1, PAD_LEN), dtype=torch.long)
+    torch.onnx.export(
+        wrap, (pids, pattn), str(path),
+        input_names=["input_ids", "attention_mask"], output_names=head_names,
+        dynamic_axes={"input_ids": {0: "batch"}, "attention_mask": {0: "batch"}},
+        opset_version=17, dynamo=False)
+    return head_names
+
+
 def test_onnxruntime_int8_runs(tmp_path):
     """int8 동적 양자화 모델이 onnxruntime 에서 로드·추론된다(모바일 탑재 검증)."""
     import onnxruntime as ort
