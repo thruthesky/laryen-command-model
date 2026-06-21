@@ -48,15 +48,27 @@ _MODE_PHRASES = {
 _KO_TAILS = ["", " 해", " 해줘", " 해주세요", " 좀", " 줘", "줘"]
 # unknown(잡담·게임 질문/설명) — 게임 *조작* 이 아니라서 SML 이 unknown 을 내면 클라가
 # CF(explain/chat route)로 폴백. "라리엔 이해"의 경계: 명령 vs 질문을 가르는 학습.
+# **fallback 안전장치의 핵심** — 잡담/질문을 명령으로 오인하면 오작동하므로 다양하게 학습.
 _UNKNOWN = [
-    "안녕", "안녕하세요", "반가워", "넌 누구야", "이름이 뭐야", "너 뭐야", "고마워", "수고해",
-    "오늘 날씨 어때", "이 게임 재밌다", "심심해", "뭐하고 놀까", "라리엔이 뭐야", "도움말",
-    "hello", "hi", "who are you", "thanks", "what can you do",
-    "어디서 사냥하면 좋아", "지금 뭐 하면 좋아", "이 몬스터 뭐야", "강해지려면 어떻게 해",
-    "레벨 어떻게 올려", "보스는 어디 있어", "파티 어떻게 만들어", "거래 어떻게 해",
-    "친구 추가 어떻게 해", "어떤 무기가 좋아", "캐스터가 뭐야", "공격력 어떻게 올려",
-    "다음에 뭐 해야 돼", "내 레벨 몇이야", "강철 세트 효과가 뭐야", "왜 자꾸 죽어",
+    # 인사·잡담·정체성·감사.
+    "안녕", "안녕하세요", "반가워", "넌 누구야", "이름이 뭐야", "너 뭐야", "너 이름 뭐니",
+    "고마워", "수고해", "잘 자", "또 보자", "사랑해", "재밌다", "심심해", "지루해",
+    "오늘 날씨 어때", "밥 먹었어", "뭐하고 놀까", "노래 불러줘", "농담 해줘",
+    "hello", "hi", "hey", "who are you", "what's your name", "thanks", "thank you",
+    "good job", "see you", "i'm bored", "tell me a joke",
+    # 게임 질문(explain) — "무엇/어디/어떻게/왜" 패턴.
+    "라리엔이 뭐야", "이 게임 어떻게 해", "도움말", "튜토리얼 보여줘", "조작법 알려줘",
+    "어디서 사냥하면 좋아", "지금 뭐 하면 좋아", "다음에 뭐 해야 돼", "추천 사냥터 어디야",
+    "이 몬스터 뭐야", "캐스터가 뭐야", "브루트는 어때", "보스는 어디 있어", "제일 센 몬스터 뭐야",
+    "강해지려면 어떻게 해", "레벨 어떻게 올려", "경험치 어떻게 벌어", "공격력 어떻게 올려",
+    "강철 세트 효과가 뭐야", "불멸 세트 좋아", "어떤 무기가 좋아", "장비 어디서 구해",
+    "파티 어떻게 만들어", "거래 어떻게 해", "친구 추가 어떻게 해", "채팅 어떻게 해",
+    "물약 어디서 사", "내 레벨 몇이야", "내 체력 얼마야", "왜 자꾸 죽어", "왜 안 움직여",
+    "안전지대가 뭐야", "자동사냥이 뭐야", "크리티컬이 뭐야",
     "what should i do now", "how do i level up", "which monster is strong",
+    "where should i hunt", "what is a caster", "how do i make a party",
+    "how to trade", "what is the strongest weapon", "where is the boss",
+    "how do i get stronger", "what does plate set do", "is immortal set good",
 ]
 
 
@@ -136,9 +148,15 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
             else:
                 out.append((f"hunt at {al}", loc))
         al = rng.choice([a for a in lm["aliases"] if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
-        for mon in rng.sample(archs, k=2):
-            out.append((f"{al}에서 {mon} 잡아", {"action": "hunt", "location": lm["id"], "monsters": [mon]}))
-            out.append((f"{al}에서 {mon} 사냥해", {"action": "hunt", "location": lm["id"], "monsters": [mon]}))
+        # monster 포함 hunt 를 충분히(monsters 헤드 학습 — 과거 누락 0.83). 다양한 표현·archetype.
+        for mon in rng.sample(archs, k=4):
+            for v in ("잡아", "사냥해", "사냥해줘", "처치해"):
+                out.append((f"{al}에서 {mon} {v}",
+                            {"action": "hunt", "location": lm["id"], "monsters": [mon]}))
+        # 2종 동시 사냥(멀티라벨 학습).
+        m2 = rng.sample(archs, k=2)
+        out.append((f"{al}에서 {m2[0]}랑 {m2[1]} 사냥",
+                    {"action": "hunt", "location": lm["id"], "monsters": m2}))
         mon = rng.choice(archs)
         hp = rng.choice([20, 30, 40, 50])
         out.append((f"{al}에서 {mon} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
@@ -158,8 +176,11 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
     for w in fp["stop"]:
         out.append((w, {"action": "stop"}))
     for w in ("그만 멈춰", "이제 그만해", "정지해줘", "동작 멈춰", "당장 멈춰", "지금 멈춰",
-              "다 멈춰", "이동 멈춰", "그만둬", "멈추세요", "stop now", "stop moving", "freeze",
-              "움직이지 마", "가만 있어", "stop it"):
+              "다 멈춰", "이동 멈춰", "그만둬", "멈추세요", "전부 멈춰", "모두 정지", "행동 멈춰",
+              "그만하라고", "멈추라고", "동작 정지", "이동 중지", "정지시켜줘", "그만 가",
+              "움직이지 마", "가만 있어", "거기서 멈춰", "스톱해", "그만 움직여",
+              "stop now", "stop moving", "stop it", "freeze", "halt", "hold on", "pause",
+              "wait", "don't move", "stop right now", "cease", "hold", "stay there"):
         out.append((w, {"action": "stop"}))
     # potion(4종) — 풍부한 표현.
     pot_verbs = ["물약", "물약 먹어", "물약 마셔", "물약 써", "물약 사용", "물약 줘", "포션"]

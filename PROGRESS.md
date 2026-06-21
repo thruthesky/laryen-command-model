@@ -19,6 +19,26 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 2 (2026-06-22)
+**자아비판**: action 0.90 vs exact 0.78 격차 = 슬롯 오류인데 *어느 헤드가 약한지* 측정
+도구가 없어 맹목 증강 중. unknown(잡담/질문) fallback이 깨지면 오작동.
+
+**구현**:
+- `lcm/eval.py` — 헤드별·action별 정확도 + 오답 샘플 진단. **진단 결과**: unknown 0.14·
+  stop 0.0·monsters 0.83·target 0.75 가 약점(적은 클래스 표본 부족이 근본).
+- `synth.py` 보강: unknown 38→77(게임 질문 한/영 다양화 — fallback 안전장치), stop
+  27→47(영어 halt/pause/freeze 등), hunt monster 표본↑(4종×4표현+2종동시) → 2034건.
+- `INTEGRATION.md` — 플러터 onnxruntime 통합 설계(BPE 토큰화 dart 포팅이 핵심 난점).
+
+**결과**: exact 0.78→**0.91**, action 0.90→**0.97**. hunt 1.0·move 0.99·equip/unequip/
+auto_combat/auto_potion 1.0. pytest 8/8, export fp32/int8 parity 5/5. int8 678KB.
+unknown 0.4·stop 0.5 는 val 표본 5·2건이라 통계 불안정(다음 iter: train eval·confidence).
+
+**다음(iter 3 후보)**: ① **confidence 분석**(unknown 분류 실패해도 저신뢰면 fallback 되는지
+— eval 에 confidence 분포·fallback recall) ② val 표본 부족 클래스의 train/val 일반화 격차
+측정 ③ auto_combat/auto_potion 표현 증강(여전히 27·32) ④ dart BPE 포팅 + parity golden.
+
+
 ### iter 1 (2026-06-22)
 **자아비판**: ① 완료조건 2의 ONNX Runtime 유닛테스트 부재(inline 검증만) ② exact 0.55,
 action 불균형(move 330 vs auto_potion 10) ③ 데이터 608건/어순 변형 부족 ④ 정확도 회귀
