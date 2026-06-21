@@ -26,7 +26,12 @@ def _jamo_noise(text: str) -> str:
     idxs = [i for i, c in enumerate(text) if "가" <= c <= "힣"]
     if not idxs:
         return text
-    k = 2 if len(idxs) >= 4 and random.random() < 0.4 else 1
+    # 글자 수에 비례해 1~3글자 변형(STT 음소 오류는 여러 글자에 걸쳐 날 수 있음).
+    k = 1
+    if len(idxs) >= 3 and random.random() < 0.5:
+        k = 2
+    if len(idxs) >= 6 and random.random() < 0.3:
+        k = 3
     chars = list(text)
     for i in random.sample(idxs, k=min(k, len(idxs))):
         chars[i] = _jamo_one(chars[i])
@@ -61,12 +66,12 @@ class LcmDataset(Dataset):
         """STT/입력 노이즈 모사 — 공백 변형 + 자모 변형(받침 탈락·모음 혼동).
         sherpa STT 는 음소 단위라 "멈춰"→"멈처"·"사냥"→"사양" 류 자모 오류가 실전 노이즈."""
         r = random.random()
-        if r < self.aug_p * 0.18:
+        if r < self.aug_p * 0.15:
             return text.replace(" ", "")           # 공백 전부 제거
-        if r < self.aug_p * 0.3:
+        if r < self.aug_p * 0.25:
             return text.replace(" ", "  ")          # 공백 중복
         if r < self.aug_p:
-            return _jamo_noise(text)                # 자모 변형(받침/모음 — 비중 70%)
+            return _jamo_noise(text)                # 자모 변형(받침/모음 — 비중 75%)
         return text
 
     def __getitem__(self, i: int) -> dict:

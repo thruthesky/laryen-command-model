@@ -282,7 +282,8 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
     }
     for gid in ssot["gear_singles"]:
         nm = gear_ko.get(gid, gid)
-        for t in (f"{nm}만 착용", f"{nm} 장착", f"{nm} 착용해줘"):
+        for t in (f"{nm}만 착용", f"{nm} 장착", f"{nm} 착용해줘", f"{nm}만 끼워",
+                  f"{nm} 껴", f"{nm}만", f"{nm} 차", f"{nm}만 장착", f"{nm} 끼워"):
             out.append((t, {"action": "equip", "gear": gid}))
     # unequip — 3슬롯 × 표현.
     for slot, words in _SLOT_WORDS.items():
