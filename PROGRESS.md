@@ -19,6 +19,20 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 16 (2026-06-22) — Dart 3계층 classify(통합 차단지점 최소화)
+**자아비판**: dart 토큰화·decode 는 있으나 3계층 classify 로직(meaningful 가드·threshold·
+fallback)이 dart 에 없어, 라리엔이 통합 시 그 로직을 다시 짜야 함.
+
+**구현**: `dart/lib/lcm_classifier.dart` — infer.py classify 1:1 포팅, **onnxruntime 추론만
+`InferFn` 콜백으로 추상화**. `dart/test/classifier_test.dart`(모킹 추론으로 가드·threshold·
+decode·fallback 검증).
+
+**결과**: dart test 7/7(tokenizer 2·decoder 1·classifier 4). **통합 차단지점이 InferFn
+(onnxruntime) 하나로 최소화** — 라리엔은 onnxruntime 세션으로 그 함수만 채우면 끝.
+
+**다음(iter 17 후보)**: ① InferFn 라리엔 통합(onnxruntime — 차단지점) ② 어순/문체 다양성
+③ distillation(CF 차단지점).
+
 ### iter 15 (2026-06-22) — edge case 안전성(빈·구두점·초장문)
 **자아비판**: 정상/노이즈 입력은 견고하나 실전 STT 의 이상 출력(빈 문자열·구두점·이모지·
 초장문)에 대한 안전성 미검증.
