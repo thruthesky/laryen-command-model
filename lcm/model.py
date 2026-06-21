@@ -43,11 +43,15 @@ class LcmEncoder(nn.Module):
         B, L = input_ids.shape
         pos = torch.arange(L, device=input_ids.device).clamp_max(self.max_len - 1)
         x = self.tok(input_ids) + self.pos(pos)[None, :, :]
-        pad_mask = ~attention_mask  # True = 무시할 위치
-        h = self.encoder(x, src_key_padding_mask=pad_mask)
+        # additive float padding mask(-1e9) — boolean src_key_padding_mask 는 trace 시
+        # 상수 폴딩되어 ONNX 가 export 입력 길이에 고정되는 회귀가 있다(다른 길이 입력에서
+        # 출력이 틀어짐). float mask 는 텐서 연산으로 남아 어떤 길이에도 일반화된다.
+        neg = torch.zeros(input_ids.shape, dtype=x.dtype, device=x.device)
+        neg = neg.masked_fill(~attention_mask, -1e9)
+        h = self.encoder(x, src_key_padding_mask=neg)
         h = self.norm(h)
         # masked mean pooling.
-        m = attention_mask.unsqueeze(-1).float()
+        m = attention_mask.unsqueeze(-1).to(x.dtype)
         pooled = (h * m).sum(1) / m.sum(1).clamp_min(1.0)
         return pooled
 

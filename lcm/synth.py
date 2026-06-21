@@ -5,6 +5,9 @@
 SML 학습의 1차 데이터다(2차로 실사용 L3 로그를 Gemini 로 라벨링해 분포를 보정 —
 README 의 distillation). 한/영만 우선 지원한다(코드스위칭 "plate 세트 입고" 포함).
 
+**다양성 & 균형(v2)**: 어순·어미·공손 변형을 곱해 표현을 늘리고, action 간 표본 수를
+균형 있게 맞춘다(과거 move 330 vs auto_potion 10 편향 → 헤드 학습 실패의 원인이었다).
+
 생성물 1건 = {"text": <발화>, "intent": <라리엔 action JSON 1개>}.
 intent 는 schema.encode_intent 가 헤드 라벨로 바꾼다.
 """
@@ -24,57 +27,97 @@ _DIR_WORDS = {
     315: ["왼쪽 위", "북서", "northwest"],
 }
 _POTION_WORDS = {
-    "hp": ["체력", "회복", "hp", "HP", "힐"],
-    "run": ["이동속도", "이동 속도", "런", "run", "스피드"],
-    "atkspeed": ["공격속도", "공격 속도", "공속", "atkspeed"],
-    "crit": ["크리", "크리티컬", "치명타", "crit"],
+    "hp": ["체력", "회복", "hp", "HP", "힐", "피"],
+    "run": ["이동속도", "이동 속도", "런", "run", "스피드", "speed"],
+    "atkspeed": ["공격속도", "공격 속도", "공속", "atkspeed", "attack speed"],
+    "crit": ["크리", "크리티컬", "치명타", "crit", "critical"],
 }
-_SLOT_WORDS = {"weapon": ["무기", "weapon"], "armor": ["갑옷", "armor"], "accessory": ["장신구", "accessory"]}
+_SLOT_WORDS = {
+    "weapon": ["무기", "weapon"], "armor": ["갑옷", "방어구", "armor"],
+    "accessory": ["장신구", "악세사리", "accessory"],
+}
 _MODE_PHRASES = {
-    "auto_hunt": ["자동사냥 켜", "자동 사냥 켜줘", "오토 켜", "자동사냥 시작", "turn on auto hunt"],
-    "off": ["자동사냥 꺼", "자동 사냥 꺼줘", "오토 꺼", "자동사냥 중지", "turn off auto hunt"],
-    "magnetic": ["도착하면 자동공격", "도착 후 자동 공격", "근처 자동 공격", "magnetic 모드"],
+    "auto_hunt": ["자동사냥 켜", "자동 사냥 켜줘", "오토 켜", "자동사냥 시작", "자동사냥 돌려",
+                  "자동으로 사냥해 줘", "오토헌트 켜", "turn on auto hunt", "auto hunt on", "오토 모드 켜"],
+    "off": ["자동사냥 꺼", "자동 사냥 꺼줘", "오토 꺼", "자동사냥 중지", "자동사냥 멈춰",
+            "오토 끄기", "자동전투 꺼", "turn off auto hunt", "auto hunt off", "오토 모드 꺼"],
+    "magnetic": ["도착하면 자동공격", "도착 후 자동 공격", "근처 자동 공격", "자석 모드",
+                 "마그네틱 모드", "도착하면 주변 공격", "magnetic mode"],
 }
-# unknown(잡담·모호) — 게임 조작이 아니라서 SML 이 unknown 을 내면 클라가 CF 로 폴백.
+# 어미·공손 변형(한국어). 동사형 발화에 곱해 표현을 늘린다.
+_KO_TAILS = ["", " 해", " 해줘", " 해주세요", " 좀", " 줘", "줘"]
+# unknown(잡담·게임 질문/설명) — 게임 *조작* 이 아니라서 SML 이 unknown 을 내면 클라가
+# CF(explain/chat route)로 폴백. "라리엔 이해"의 경계: 명령 vs 질문을 가르는 학습.
 _UNKNOWN = [
-    "안녕", "안녕하세요", "넌 누구야", "이름이 뭐야", "고마워", "오늘 날씨 어때",
-    "이 게임 재밌다", "심심해", "뭐하고 놀까", "라리엔이 뭐야", "도움말",
-    "hello", "who are you", "thanks", "what can you do", "어디서 사냥하면 좋아",
-    "이 몬스터 뭐야", "강해지려면 어떻게 해", "레벨 어떻게 올려",
+    "안녕", "안녕하세요", "반가워", "넌 누구야", "이름이 뭐야", "너 뭐야", "고마워", "수고해",
+    "오늘 날씨 어때", "이 게임 재밌다", "심심해", "뭐하고 놀까", "라리엔이 뭐야", "도움말",
+    "hello", "hi", "who are you", "thanks", "what can you do",
+    "어디서 사냥하면 좋아", "지금 뭐 하면 좋아", "이 몬스터 뭐야", "강해지려면 어떻게 해",
+    "레벨 어떻게 올려", "보스는 어디 있어", "파티 어떻게 만들어", "거래 어떻게 해",
+    "친구 추가 어떻게 해", "어떤 무기가 좋아", "캐스터가 뭐야", "공격력 어떻게 올려",
+    "다음에 뭐 해야 돼", "내 레벨 몇이야", "강철 세트 효과가 뭐야", "왜 자꾸 죽어",
+    "what should i do now", "how do i level up", "which monster is strong",
 ]
 
 
+def _has_batchim(word: str) -> bool:
+    if not word:
+        return False
+    last = word[-1]
+    return "가" <= last <= "힣" and (ord(last) - 0xAC00) % 28 != 0
+
+
 def _ko_obj(word: str) -> str:
-    """받침에 따라 '로/으로' 선택(대략적 — 합성 다양성용)."""
+    """받침에 따라 '로/으로'(예: 강남으로 / 강서로). 받침 ㄹ 도 '로'."""
     if not word:
         return word + "로"
     last = word[-1]
     if "가" <= last <= "힣":
         code = (ord(last) - 0xAC00) % 28
-        return word + ("로" if code == 0 or code == 8 else "으로")
+        return word + ("로" if code in (0, 8) else "으로")
     return word + "로"
+
+
+def _tails(stem: str, rng, k: int = 3) -> list[str]:
+    """동사 어간(예: '벗어') 에 어미 변형을 곱해 k개 표현을 만든다."""
+    cands = [stem + t for t in _KO_TAILS]
+    uniq = list(dict.fromkeys(cands))
+    return uniq[:k] if k < len(uniq) else uniq
 
 
 def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
     out = []
+    move_verbs = ["가", "가줘", "이동", "이동해", "이동해줘", "이동시켜줘", "가자"]
     for lm in ssot["landmarks"]:
-        al = rng.choice(lm["aliases"]) if lm["aliases"] else lm["ko"]
         intent = {"action": "move", "location": lm["id"]}
-        for t in (f"{_ko_obj(al)} 가", f"{_ko_obj(al)} 가줘", f"{_ko_obj(al)} 이동",
-                  f"{_ko_obj(al)} 이동해줘", f"{al}로 이동", f"move to {al}", f"go to {al}"):
-            out.append((t, intent))
-    # 안전지대 대기(move location=safe).
-    for t in ("세이프존에서 대기해", "안전지대로 가서 쉬어", "쉼터로 가", "마을로 이동"):
+        # 한국어 별칭 + 영문 별칭 모두 활용.
+        for al in lm["aliases"]:
+            if any("가" <= c <= "힣" for c in al):  # 한글 별칭
+                for v in rng.sample(move_verbs, k=min(3, len(move_verbs))):
+                    out.append((f"{_ko_obj(al)} {v}".strip(), intent))
+            else:  # 영문 별칭
+                out.append((f"move to {al}", intent))
+                out.append((f"go to {al}", intent))
+    # 안전지대 대기(move location=safe) — '대기/쉬어'도 move(safe).
+    safe_phr = ["세이프존에서 대기해", "안전지대로 가서 쉬어", "쉼터로 가", "마을로 이동",
+                "안전지대로 피신", "세이프존으로 가줘", "안전한 곳으로 가", "대기 장소로 가"]
+    for t in safe_phr:
         out.append((t, {"action": "move", "location": "safe"}))
     # 순수 방향.
     for deg, words in _DIR_WORDS.items():
+        intent = {"action": "move", "direction": deg}
         for w in words:
-            intent = {"action": "move", "direction": deg}
-            out.append((f"{_ko_obj(w)} 가", intent))
-            out.append((f"{w}으로 걸어가", intent))
-            out.append((f"go {w}", intent))
+            if any("가" <= c <= "힣" for c in w):
+                out.append((f"{_ko_obj(w)} 가", intent))
+                out.append((f"{w}으로 걸어가", intent))
+                out.append((f"{w}쪽으로 이동", intent))
+            else:
+                out.append((f"go {w}", intent))
+                out.append((f"move {w}", intent))
     for n in range(1, 13):  # "N시 방향"
-        out.append((f"{n}시 방향으로 가", {"action": "move", "direction": (n * 30) % 360}))
+        d = (n * 30) % 360
+        out.append((f"{n}시 방향으로 가", {"action": "move", "direction": d}))
+        out.append((f"{n}시 방향으로 걸어", {"action": "move", "direction": d}))
     return out
 
 
@@ -82,48 +125,69 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
     out = []
     hunts = [lm for lm in ssot["landmarks"] if lm["kind"] == "hunt"]
     archs = ssot["archetypes"]
+    hunt_verbs = ["사냥", "사냥해", "사냥해줘", "사냥하자", "에서 사냥", "에서 잡아"]
     for lm in hunts:
-        al = rng.choice(lm["aliases"]) if lm["aliases"] else lm["ko"]
-        out.append((f"{al}에서 사냥", {"action": "hunt", "location": lm["id"]}))
-        out.append((f"{al}에서 사냥해줘", {"action": "hunt", "location": lm["id"]}))
-        out.append((f"hunt at {al}", {"action": "hunt", "location": lm["id"]}))
+        loc = {"action": "hunt", "location": lm["id"]}
+        for al in lm["aliases"][:4]:
+            if any("가" <= c <= "힣" for c in al):
+                out.append((f"{al}에서 사냥", loc))
+                out.append((f"{al}에서 사냥해줘", loc))
+                out.append((f"{al}에서 자동 사냥", loc))
+            else:
+                out.append((f"hunt at {al}", loc))
+        al = rng.choice([a for a in lm["aliases"] if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
+        for mon in rng.sample(archs, k=2):
+            out.append((f"{al}에서 {mon} 잡아", {"action": "hunt", "location": lm["id"], "monsters": [mon]}))
+            out.append((f"{al}에서 {mon} 사냥해", {"action": "hunt", "location": lm["id"], "monsters": [mon]}))
         mon = rng.choice(archs)
-        out.append((f"{al}에서 {mon} 잡아", {"action": "hunt", "location": lm["id"], "monsters": [mon]}))
         hp = rng.choice([20, 30, 40, 50])
         out.append((f"{al}에서 {mon} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
                     {"action": "hunt", "location": lm["id"], "monsters": [mon],
                      "retreatToSafeZone": True, "retreatHpPct": hp}))
     # 위치 없는 사냥(레벨 추천 — location 비움).
-    for t in ("사냥하자", "사냥 시작", "자동으로 사냥해", "사냥하러 가자", "let's hunt"):
+    for t in ("사냥하자", "사냥 시작", "자동으로 사냥해", "사냥하러 가자", "let's hunt",
+              "사냥터 가서 사냥", "몬스터 잡으러 가자", "사냥 좀 하자"):
         out.append((t, {"action": "hunt"}))
     return out
 
 
-def _gen_simple(ssot) -> list[tuple[str, dict]]:
+def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
     out = []
-    # stop / potion / open_menu 는 fast-path 별칭을 그대로 학습(SML 도 동일 표현 커버).
     fp = ssot["fast_path"]
+    # stop — fast-path 별칭 + 다양한 표현(균형 위해 증강).
     for w in fp["stop"]:
         out.append((w, {"action": "stop"}))
-    for extra in ("그만 멈춰", "이제 그만해", "정지해줘", "동작 멈춰"):
-        out.append((extra, {"action": "stop"}))
-    for w in fp["potionHp"]:
+    for w in ("그만 멈춰", "이제 그만해", "정지해줘", "동작 멈춰", "당장 멈춰", "지금 멈춰",
+              "다 멈춰", "이동 멈춰", "그만둬", "멈추세요", "stop now", "stop moving", "freeze",
+              "움직이지 마", "가만 있어", "stop it"):
+        out.append((w, {"action": "stop"}))
+    # potion(4종) — 풍부한 표현.
+    pot_verbs = ["물약", "물약 먹어", "물약 마셔", "물약 써", "물약 사용", "물약 줘", "포션"]
+    for pid, words in _POTION_WORDS.items():
+        for w in words:
+            for v in rng.sample(pot_verbs, k=3):
+                out.append((f"{w} {v}".strip(), {"action": "potion", "potion": pid}))
+    for w in fp["potionHp"]:  # "물약"의 기본 = hp(fast-path 와 동일 학습).
         out.append((w, {"action": "potion", "potion": "hp"}))
+    # open_menu — fast-path 별칭 + "{메뉴} 열어/보여줘/띄워".
+    menu_ko = {"menu": ["메뉴", "메인 메뉴"], "chat": ["챗봇", "도우미", "라리아"],
+               "groupchat": ["채팅", "전체 채팅", "그룹 채팅"], "inventory": ["인벤토리", "장비창", "가방"],
+               "potion": ["물약창", "포션창"], "sound": ["소리 설정", "음량 설정", "볼륨 설정"],
+               "autocombat": ["자동전투 설정", "전투 설정", "자동사냥 설정"]}
     for target, aliases in fp["menu"].items():
         for w in aliases:
             out.append((w, {"action": "open_menu", "target": target}))
-    # potion(4종).
-    for pid, words in _POTION_WORDS.items():
-        for w in words:
-            out.append((f"{w} 물약", {"action": "potion", "potion": pid}))
-            out.append((f"{w} 물약 먹어", {"action": "potion", "potion": pid}))
-    # equip(세트 + 단품).
-    set_ko = {"victor": "빅터", "immortal": "불멸", "plate": ["강철", "판금", "plate"]}
-    for sid in ssot["gear_sets"]:
-        names = set_ko.get(sid, [sid])
-        names = names if isinstance(names, list) else [names]
+    for target, names in menu_ko.items():
         for nm in names:
-            for t in (f"{nm} 세트 착용", f"{nm} 세트 입어", f"{nm}의 세트 아이템 착용", f"equip {sid} set"):
+            for v in ("열어", "열어줘", "보여줘", "띄워줘", "켜줘"):
+                out.append((f"{nm} {v}", {"action": "open_menu", "target": target}))
+    # equip(세트 + 단품).
+    set_ko = {"victor": ["빅터", "victor"], "immortal": ["불멸", "immortal"],
+              "plate": ["강철", "판금", "plate"]}
+    for sid in ssot["gear_sets"]:
+        for nm in set_ko.get(sid, [sid]):
+            for t in (f"{nm} 세트 착용", f"{nm} 세트 입어", f"{nm}의 세트 아이템 착용",
+                      f"{nm} 세트 장착", f"{nm} 풀세트 착용", f"equip {sid} set", f"{nm} 세트로 갈아입어"):
                 out.append((t, {"action": "equip", "set": sid}))
     gear_ko = {
         "victor_weapon": "빅터의 검", "victor_armor": "빅터의 갑옷", "victor_accessory": "빅터의 장신구",
@@ -132,24 +196,29 @@ def _gen_simple(ssot) -> list[tuple[str, dict]]:
     }
     for gid in ssot["gear_singles"]:
         nm = gear_ko.get(gid, gid)
-        out.append((f"{nm}만 착용", {"action": "equip", "gear": gid}))
-    # unequip.
+        for t in (f"{nm}만 착용", f"{nm} 장착", f"{nm} 착용해줘"):
+            out.append((t, {"action": "equip", "gear": gid}))
+    # unequip — 3슬롯 × 표현.
     for slot, words in _SLOT_WORDS.items():
         for w in words:
-            out.append((f"{w} 벗어", {"action": "unequip", "slot": slot}))
-            out.append((f"{w} 해제", {"action": "unequip", "slot": slot}))
-    # auto_combat.
+            for v in ("벗어", "해제", "풀어", "벗겨줘", "빼", "벗어줘"):
+                out.append((f"{w} {v}", {"action": "unequip", "slot": slot}))
+            out.append((f"unequip {w}", {"action": "unequip", "slot": slot}))
+    # auto_combat — 3모드 × 표현.
     for mode, phrases in _MODE_PHRASES.items():
         for p in phrases:
             out.append((p, {"action": "auto_combat", "mode": mode}))
-    # auto_potion.
+    # auto_potion — 4물약 + all × enable/disable × 표현.
     for pid, words in _POTION_WORDS.items():
         w = words[0]
-        out.append((f"{w} 물약 자동 사용", {"action": "auto_potion", "potions": [pid], "enable": True}))
-        out.append((f"{w} 물약 자동으로 켜", {"action": "auto_potion", "potions": [pid], "enable": True}))
-    out.append(("모든 물약 자동 사용", {"action": "auto_potion", "potions": ["all"], "enable": True}))
-    out.append(("물약 자동 꺼", {"action": "auto_potion", "potions": ["all"], "enable": False}))
-    # unknown(잡담·게임 질문 — CF 폴백 대상).
+        for v in ("물약 자동 사용", "물약 자동으로 켜", "물약 자동", "물약 자동 사용해줘", "물약 오토"):
+            out.append((f"{w} {v}", {"action": "auto_potion", "potions": [pid], "enable": True}))
+        out.append((f"{w} 물약 자동 꺼", {"action": "auto_potion", "potions": [pid], "enable": False}))
+    for t in ("모든 물약 자동 사용", "전체 물약 자동", "물약 전부 자동 사용", "all 물약 자동"):
+        out.append((t, {"action": "auto_potion", "potions": ["all"], "enable": True}))
+    for t in ("물약 자동 꺼", "물약 자동 사용 꺼", "자동 물약 끄기", "물약 오토 꺼"):
+        out.append((t, {"action": "auto_potion", "potions": ["all"], "enable": False}))
+    # unknown(잡담·게임 질문 — CF explain/chat 폴백 대상).
     for w in _UNKNOWN:
         out.append((w, {"action": "unknown"}))
     return out
@@ -161,7 +230,7 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs: list[tuple[str, dict]] = []
     pairs += _gen_move(ssot, rng)
     pairs += _gen_hunt(ssot, rng)
-    pairs += _gen_simple(ssot)
+    pairs += _gen_simple(ssot, rng)
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).
     dedup: dict[str, dict] = {}
     for text, intent in pairs:
