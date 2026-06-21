@@ -150,6 +150,13 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"{al}에서 사냥", loc))
                 out.append((f"{al}에서 사냥해줘", loc))
                 out.append((f"{al}에서 자동 사냥", loc))
+                # 구어체/도치(실사용 발화).
+                out.append((f"사냥하자 {al}에서", loc))
+                out.append((f"{al} 가서 사냥", loc))
+                out.append((f"{al} 가서 사냥하자", loc))
+                out.append((f"{al}으로 사냥 가자", loc))
+                out.append((f"{al} 가서 사냥하면 될까", loc))
+                out.append((f"{al}으로 사냥 가줄래", loc))
             else:
                 out.append((f"hunt at {al}", loc))
         al = rng.choice([a for a in lm["aliases"] if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
@@ -188,7 +195,8 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
               "wait", "don't move", "stop right now", "cease", "hold", "stay there"):
         out.append((w, {"action": "stop"}))
     # potion(4종) — 풍부한 표현.
-    pot_verbs = ["물약", "물약 먹어", "물약 마셔", "물약 써", "물약 사용", "물약 줘", "포션"]
+    pot_verbs = ["물약", "물약 먹어", "물약 마셔", "물약 써", "물약 사용", "물약 줘", "포션",
+                 "물약 좀 먹자", "물약 좀 줘", "물약 마시자"]  # 구어체
     for pid, words in _POTION_WORDS.items():
         for w in words:
             for v in rng.sample(pot_verbs, k=3):

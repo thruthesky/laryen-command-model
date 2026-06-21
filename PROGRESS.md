@@ -10,14 +10,26 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 13
-- 데이터: 합성 2572건 + on-the-fly augmentation(공백 + 자모 변형). d_model 160·layers 3.
-- 정확도: **exact 0.942 / action 0.977**, 홀드아웃 fallback 0.90, 공백·유사발음 강건성 통과.
-- ONNX: 추론 0.44ms, int8 1148KB, parity 5/5, int8 vs fp32 ≥0.97.
-- pytest **15/15** + dart **3/3**. 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 18
+- 데이터: 합성 ~2800건 + augment(공백+자모 60%+구어체). d_model 160·layers 3.
+- 정확도: **exact 0.946 / action 0.97**, 홀드아웃 0.97. 강건성: 공백·유사발음·구어체·edge 통과.
+- ONNX: 추론 0.44ms, int8 1168KB, parity 5/5, int8 vs fp32 ≥0.97.
+- pytest **17/17** + dart **7/7**(tokenizer·decoder·classifier parity). 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 18 (2026-06-22) — 구어체/도치 강건성(+회귀 수정)
+**자아비판**: 노이즈 강건성은 다층이나 실사용 도치·구어체("사냥하자 강남에서") 미대응 0.70.
+
+**구현**: synth 구어체/도치 패턴(hunt 도치·"물약 좀 먹자") 보강. `test_colloquial_robustness`
+(≥0.8). **회귀 발견**: 구어체 추가로 phonetic 0.62 후퇴 → 자모 augment 비중 60%·aug_p 0.4
+로 회복. run_all.sh 에 export_golden 추가(재학습 시 토크나이저 변경→golden 갱신 누락 방지).
+
+**결과**: 구어체·phonetic 모두 통과 + exact 0.946·홀드아웃 0.97. pytest 17/17, dart 7/7.
+교훈: 한 강건성 보강이 다른 강건성을 흔들 수 있어 전수 회귀 가드가 필수(테스트가 잡음).
+
+**다음(iter 19 후보)**: ① 라리엔 lib 통합(차단지점) ② distillation(CF 차단지점) ③ 다국어 확장.
 
 ### iter 17 (2026-06-22) — 라리엔 통합 코드 예시(즉시 착수용)
 **자아비판**: 통합 차단지점을 InferFn 으로 줄였으나, 라리엔 개발자가 그걸 onnxruntime 으로

@@ -54,12 +54,12 @@ class LcmDataset(Dataset):
         """STT/입력 노이즈 모사 — 공백 변형 + 자모 변형(받침 탈락·모음 혼동).
         sherpa STT 는 음소 단위라 "멈춰"→"멈처"·"사냥"→"사양" 류 자모 오류가 실전 노이즈."""
         r = random.random()
-        if r < self.aug_p * 0.4:
+        if r < self.aug_p * 0.25:
             return text.replace(" ", "")           # 공백 전부 제거
-        if r < self.aug_p * 0.55:
+        if r < self.aug_p * 0.4:
             return text.replace(" ", "  ")          # 공백 중복
         if r < self.aug_p:
-            return _jamo_noise(text)                # 자모 변형(받침/모음)
+            return _jamo_noise(text)                # 자모 변형(받침/모음 — 비중 60%)
         return text
 
     def __getitem__(self, i: int) -> dict:

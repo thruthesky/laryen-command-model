@@ -122,6 +122,20 @@ def test_edge_cases_safe(rt):
         assert res["layer"] in ("sml", "fallback")
 
 
+def test_colloquial_robustness(rt):
+    """도치·구어체 발화(실사용)에 강건해야 한다."""
+    cases = [
+        ("사냥하자 강남에서", "hunt"), ("강남 가서 사냥 좀 해줘", "hunt"),
+        ("물약 좀 먹자", "potion"), ("왼쪽으로 좀 가볼까", "move"),
+        ("이제 그만하자", "stop"), ("자동사냥 돌리자", "auto_combat"),
+        ("연습장 가서 사냥하면 될까", "hunt"), ("강남으로 사냥 가줄래", "hunt"),
+    ]
+    ok = sum(1 for t, w in cases if rt.predict(t)[0]["action"] == w)
+    rate = ok / len(cases)
+    wrong = [(t, rt.predict(t)[0]["action"]) for t, w in cases if rt.predict(t)[0]["action"] != w]
+    assert rate >= 0.8, f"구어체 강건성 {rate:.2f} < 0.8 — 오답: {wrong}"
+
+
 def test_calibration_ece(rt):
     """confidence 가 실제 정확도와 일치(ECE)해야 threshold 판정이 신뢰된다(label smoothing)."""
     from lcm.bench import compute_ece
