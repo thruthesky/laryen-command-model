@@ -19,6 +19,18 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 17 (2026-06-22) — 라리엔 통합 코드 예시(즉시 착수용)
+**자아비판**: 통합 차단지점을 InferFn 으로 줄였으나, 라리엔 개발자가 그걸 onnxruntime 으로
+*어떻게 구현하는지* 구체 코드가 없어 착수 비용이 남음.
+
+**구현**: INTEGRATION.md 에 InferFn(onnxruntime) 구현 예시 + voice_command_sheet.dart 통합
+지점(fast-path 실패→classify→sml 실행/fallback CF) 복붙용 코드 추가.
+
+**결과**: 사용자가 onnxruntime 승인 시 즉시 통합 착수 가능(세션 로드→InferFn→classify→실행).
+LCM repo 측 통합 준비 100% 완결. py 16/16·dart 7/7 유지.
+
+**다음(iter 18 후보)**: ① InferFn 라리엔 통합(차단지점) ② 어순/구어체 다양성 ③ distillation.
+
 ### iter 16 (2026-06-22) — Dart 3계층 classify(통합 차단지점 최소화)
 **자아비판**: dart 토큰화·decode 는 있으나 3계층 classify 로직(meaningful 가드·threshold·
 fallback)이 dart 에 없어, 라리엔이 통합 시 그 로직을 다시 짜야 함.
