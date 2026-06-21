@@ -10,13 +10,27 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 25
-- 모델 d_model 192·seed 고정. **exact 0.950**, 홀드아웃 0.97. 강건성 다층(공백·자모·구어체·
-  존댓말·은어·한글숫자·edge). 라우팅: 명령류→sml / 복합·상대·부정·다중→fallback.
-- pytest **22/22** + dart **7/7**. 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 26
+- 모델 d_model 192·seed 고정. **exact 0.986**(최고), 홀드아웃 0.97. 강건성 다층.
+- 라우팅: 명령류(이동/사냥/물약/장비/메뉴/방향/존댓말/은어/한글숫자/구어)→sml /
+  복합·상대·부정·다중→fallback. monsters TP 안정·FP 0.
+- pytest **23/23** + dart **7/7**. 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 26 (2026-06-22) — holdout 일반화 + monsters 안정(archetype 5배) — exact 0.986
+**자아비판**: train 에 없는 다양 실사용 명령 일반화 미측정. 측정 결과 0.76(move 다양 표현·
+potion 구어 약점). + monsters TP 반복 흔들림.
+
+**구현**: ① move 표현(데려가/데려다줘/지시어 "저기·거기 X로")·hunt 도치("몹 잡아")·potion
+구어("회복 좀 하자") 보강 ② **archetype 균등 5배**(각 archetype 25 예시)로 monsters TP 안정화
+③ test_holdout_command_generalization 가드(≥0.8).
+
+**결과**: holdout 명령 일반화 통과, monsters TP 안정. **exact 0.954→0.986(최고 큰 폭 — monster
+데이터 충분해져 hunt 정확도↑)**. pytest 23/23, dart 7/7.
+
+**다음(iter 27 후보)**: ① 다중동작 LCM 직접(actions 배열) ② 멀티턴 맥락 ③ 더 다양한 holdout.
 
 ### iter 25 (2026-06-22) — 한글 숫자 + 복합위치 라우팅 보강
 **자아비판**: 한글 숫자("삼십 퍼센트"·"절반")→fallback/오류. + 한글숫자 추가로 복합위치

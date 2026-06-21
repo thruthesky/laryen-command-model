@@ -108,14 +108,19 @@ def _tails(stem: str, rng, k: int = 3) -> list[str]:
 
 def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
     out = []
-    move_verbs = ["가", "가줘", "이동", "이동해", "이동해줘", "이동시켜줘", "가자"]
+    move_verbs = ["가", "가줘", "이동", "이동해", "이동해줘", "이동시켜줘", "가자",
+                  "데려가", "데려다줘", "가자고", "가보자", "가야겠어"]
     for lm in ssot["landmarks"]:
         intent = {"action": "move", "location": lm["id"]}
         # 한국어 별칭 + 영문 별칭 모두 활용.
         for al in lm["aliases"]:
             if any("가" <= c <= "힣" for c in al):  # 한글 별칭
-                for v in rng.sample(move_verbs, k=min(3, len(move_verbs))):
+                for v in rng.sample(move_verbs, k=4):
                     out.append((f"{_ko_obj(al)} {v}".strip(), intent))
+                # 지시어 prefix("저기/거기 X로 가").
+                for pre in rng.sample(["저기", "거기", "그", "일단"], k=2):
+                    out.append((f"{pre} {al}로 가", intent))
+                    out.append((f"{pre} {_ko_obj(al)} 이동", intent))
             else:  # 영문 별칭 — 영어 단독 + 한글 조사 혼용("safe zone으로 가").
                 out.append((f"move to {al}", intent))
                 out.append((f"go to {al}", intent))
@@ -165,6 +170,9 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"사냥하자 {al}에서", loc))
                 out.append((f"{al} 가서 사냥", loc))
                 out.append((f"{al} 가서 사냥하자", loc))
+                out.append((f"{al} 가서 몹 잡아", loc))
+                out.append((f"사냥 좀 하러 가자 {al}", loc))
+                out.append((f"{al} 가서 몬스터 잡자", loc))
                 out.append((f"{al}으로 사냥 가자", loc))
                 out.append((f"{al} 가서 사냥하면 될까", loc))
                 out.append((f"{al}으로 사냥 가줄래", loc))
@@ -205,11 +213,11 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
     # 모든 archetype 균등 학습 — monsters(multi-label) TP 가 학습 비결정성에 흔들리지 않게
     # 32종 각각 충분한 hunt 예시 보장(과거 일부 archetype false negative 반복).
     for arch in archs:
-        for _ in range(2):
+        for _ in range(5):  # archetype 당 충분(monsters multi-label TP 안정 — 약/혼동 방지)
             lm = rng.choice(hunts)
             al = rng.choice([a for a in lm["aliases"]
                              if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
-            for v in ("잡아", "사냥해", "처치해", "사냥해줘"):
+            for v in ("잡아", "사냥해", "처치해", "사냥해줘", "잡자"):
                 out.append((f"{al}에서 {arch} {v}",
                             {"action": "hunt", "location": lm["id"], "monsters": [arch]}))
     # 위치 없는 사냥(레벨 추천 — location 비움).
@@ -242,6 +250,10 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
             for v in rng.sample(pot_verbs, k=3):
                 out.append((f"{w} {v}".strip(), {"action": "potion", "potion": pid}))
     for w in fp["potionHp"]:  # "물약"의 기본 = hp(fast-path 와 동일 학습).
+        out.append((w, {"action": "potion", "potion": "hp"}))
+    # HP 회복 구어("회복 좀 하자"·"체력 좀 채워").
+    for w in ["회복 좀 하자", "체력 좀 채워", "체력 채워줘", "회복하자", "힐 좀 줘",
+              "힐포션 좀", "피 좀 채워", "체력 회복", "회복 좀 시켜줘"]:
         out.append((w, {"action": "potion", "potion": "hp"}))
     # open_menu — fast-path 별칭 + "{메뉴} 열어/보여줘/띄워".
     menu_ko = {"menu": ["메뉴", "메인 메뉴"], "chat": ["챗봇", "도우미", "라리아"],

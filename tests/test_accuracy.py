@@ -149,6 +149,17 @@ def test_location_routing(rt):
     assert len(bad) <= 2, f"복합/상대 위치인데 sml(자신있게 틀림): {bad}"
 
 
+def test_holdout_command_generalization(rt):
+    """train 에 없는 다양한 실사용 명령 표현의 action 정확도(일반화 ≥0.8)."""
+    H = [("강남 데려가", "move"), ("저기 강북으로", "move"), ("관악산 가자고", "move"),
+         ("거기 강남역으로 이동", "move"), ("사냥 좀 하러 가자 연습장", "hunt"),
+         ("강동 꽃밭 가서 몹 잡아", "hunt"), ("회복 좀 하자", "potion"),
+         ("체력 좀 채워", "potion"), ("장비창 띄워", "open_menu"), ("강철로 갈아입어", "equip")]
+    ok = sum(1 for t, w in H if (r := rt.classify(t))["layer"] == "sml"
+             and r["command"]["actions"][0]["action"] == w)
+    assert ok >= len(H) * 0.8, f"holdout 명령 일반화 {ok}/{len(H)}"
+
+
 def test_polite_and_english_alias(rt):
     """존댓말("가 주실래요")·영어별칭+조사("safe zone으로 가")가 sml 로 정확 처리돼야 한다."""
     cases = [
