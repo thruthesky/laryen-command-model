@@ -19,6 +19,20 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 14 (2026-06-22) — threshold 재최적화(학습 없이 OOD 안전↑)
+**자아비판**: iter13 자모 noise 로 홀드아웃 fallback 0.97→0.90 변동. 학습 반복 대신 효율적
+해법 모색.
+
+**구현**: eval threshold sweep 분석 — calibration(label smoothing)이 좋아 threshold ↑ 해도
+명령 sml 손실 거의 없음(th=0.8: 홀드아웃 0.93·val 명령 sml 0.98·golden 명령 1.0). infer
+DEFAULT_THRESHOLD 0.7→0.8.
+
+**결과**: 홀드아웃 OOD fallback 0.90→0.93(명령 손실 미미). 학습 0회로 OOD 안전 개선.
+pytest 15/15.
+
+**다음(iter 15 후보)**: ① 라리엔 lib 통합(차단지점) ② 어순/문체 다양성 ③ distillation
+(CF 차단지점) ④ 모델 압축(이미 0.44ms).
+
 ### iter 13 (2026-06-22) — 유사발음(자모) STT 강건성(+exact 최고)
 **자아비판**: 공백 강건성은 했으나 sherpa STT 의 진짜 오류는 *자모 수준*(받침 탈락·모음
 혼동) — 유사발음 강건성 0.60("멈처"→open_menu, "사양"→unknown).
