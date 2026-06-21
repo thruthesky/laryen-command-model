@@ -38,11 +38,16 @@ _SLOT_WORDS = {
 }
 _MODE_PHRASES = {
     "auto_hunt": ["자동사냥 켜", "자동 사냥 켜줘", "오토 켜", "자동사냥 시작", "자동사냥 돌려",
-                  "자동으로 사냥해 줘", "오토헌트 켜", "turn on auto hunt", "auto hunt on", "오토 모드 켜"],
+                  "자동으로 사냥해 줘", "오토헌트 켜", "오토 모드 켜", "자동전투 켜", "자동전투 시작",
+                  "자동사냥 켜줘", "오토 사냥 켜", "자동 전투 켜줘", "자동사냥 활성화", "오토 시작",
+                  "turn on auto hunt", "auto hunt on", "enable auto hunt", "auto combat on"],
     "off": ["자동사냥 꺼", "자동 사냥 꺼줘", "오토 꺼", "자동사냥 중지", "자동사냥 멈춰",
-            "오토 끄기", "자동전투 꺼", "turn off auto hunt", "auto hunt off", "오토 모드 꺼"],
+            "오토 끄기", "자동전투 꺼", "자동사냥 꺼줘", "오토 모드 꺼", "자동전투 중지",
+            "자동사냥 비활성화", "오토 정지", "자동 전투 꺼줘", "오토 사냥 꺼", "자동사냥 끄기",
+            "turn off auto hunt", "auto hunt off", "disable auto hunt", "auto combat off"],
     "magnetic": ["도착하면 자동공격", "도착 후 자동 공격", "근처 자동 공격", "자석 모드",
-                 "마그네틱 모드", "도착하면 주변 공격", "magnetic mode"],
+                 "마그네틱 모드", "도착하면 주변 공격", "도착 후 주변 공격", "도착하면 근처 공격",
+                 "자석모드 켜", "도착하면 알아서 공격", "도착 후 자동 전투", "magnetic mode", "magnetic on"],
 }
 # 어미·공손 변형(한국어). 동사형 발화에 곱해 표현을 늘린다.
 _KO_TAILS = ["", " 해", " 해줘", " 해주세요", " 좀", " 줘", "줘"]
@@ -231,13 +236,17 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
             out.append((p, {"action": "auto_combat", "mode": mode}))
     # auto_potion — 4물약 + all × enable/disable × 표현.
     for pid, words in _POTION_WORDS.items():
-        w = words[0]
-        for v in ("물약 자동 사용", "물약 자동으로 켜", "물약 자동", "물약 자동 사용해줘", "물약 오토"):
-            out.append((f"{w} {v}", {"action": "auto_potion", "potions": [pid], "enable": True}))
-        out.append((f"{w} 물약 자동 꺼", {"action": "auto_potion", "potions": [pid], "enable": False}))
-    for t in ("모든 물약 자동 사용", "전체 물약 자동", "물약 전부 자동 사용", "all 물약 자동"):
+        for w in words[:2]:
+            for v in ("물약 자동 사용", "물약 자동으로 켜", "물약 자동", "물약 자동 사용해줘",
+                      "물약 오토", "물약 자동으로 먹어", "물약 자동 켜줘", "물약 자동 마셔"):
+                out.append((f"{w} {v}", {"action": "auto_potion", "potions": [pid], "enable": True}))
+            out.append((f"{w} 물약 자동 꺼", {"action": "auto_potion", "potions": [pid], "enable": False}))
+            out.append((f"{w} 물약 자동 끄기", {"action": "auto_potion", "potions": [pid], "enable": False}))
+    for t in ("모든 물약 자동 사용", "전체 물약 자동", "물약 전부 자동 사용", "all 물약 자동",
+              "모든 물약 자동으로", "물약 다 자동 사용", "전부 자동 물약"):
         out.append((t, {"action": "auto_potion", "potions": ["all"], "enable": True}))
-    for t in ("물약 자동 꺼", "물약 자동 사용 꺼", "자동 물약 끄기", "물약 오토 꺼"):
+    for t in ("물약 자동 꺼", "물약 자동 사용 꺼", "자동 물약 끄기", "물약 오토 꺼",
+              "모든 물약 자동 꺼", "자동 물약 중지"):
         out.append((t, {"action": "auto_potion", "potions": ["all"], "enable": False}))
     # unknown(잡담·게임 질문 — CF explain/chat 폴백 대상).
     for w in _UNKNOWN:
@@ -283,6 +292,10 @@ def _gen_smalltalk(rng) -> list[tuple[str, dict]]:
         "사랑해", "보고 싶어", "고생했어", "축하해", "미안해", "괜찮아", "잘했어",
         "지금 몇 시야", "내일 비 와", "주말 잘 보내", "맛있겠다", "예쁘다", "멋지다",
         "그게 무슨 말이야", "이해가 안 돼", "다시 말해줘", "잠깐만", "글쎄", "아마도",
+        # "뭐 할까/언제/할 수 있어" 패턴(명령 아님 — 의향·일정·가능성 질문).
+        "오늘 뭐 할까", "내일 뭐 하지", "이제 뭐 하지", "다음 뭐 할까", "언제 끝나",
+        "언제 시작해", "언제 와", "이거 할 수 있어", "그거 가능해", "될까", "되나요",
+        "얼마나 걸려", "몇 시간 남았어", "지금 해도 돼", "해도 될까", "뭐가 좋을까",
         "i'm hungry", "i'm tired", "good night", "see you tomorrow", "that's funny",
         "i love it", "nice weather", "what's up", "long time no see", "take care",
         "어디 가", "뭐 해", "왜 그래", "어떻게 생각해", "진짜야", "대박", "헐", "응 알겠어",
