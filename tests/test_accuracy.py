@@ -122,6 +122,30 @@ def test_edge_cases_safe(rt):
         assert res["layer"] in ("sml", "fallback")
 
 
+def test_location_routing(rt):
+    """단일 명확 위치 → sml(정확한 location), 복합/상대/위치의존 → fallback(CF 공간추론).
+
+    과거 버그: "강남역 동쪽 세이프존"→sml move gangnam_station(자신있게 틀림). 복합/상대는
+    분류기로 불가하므로 fallback 해야 한다(CF 가 좌표 프롬프트로 공간추론).
+    """
+    # 단일 명확 → sml + location 일치.
+    simple = [("강남역으로 가", "gangnam_station"), ("세이프존으로 이동", "safe"),
+              ("연습 사냥터로 가", "practice"), ("강북으로 이동", "gangbuk")]
+    for t, loc in simple:
+        r = rt.classify(t)
+        assert r["layer"] == "sml", f"'{t}' → {r['layer']}(단일은 sml 이어야)"
+        assert r["command"]["actions"][0].get("location") == loc, \
+            f"'{t}' location={r['command']['actions'][0].get('location')} != {loc}"
+    # 복합/상대/위치의존 → fallback(자신있게 틀린 landmark 금지).
+    complex_ = [
+        "강남역 동쪽 세이프 존으로 이동해", "강남역 동쪽으로 가", "강남역 위로 가",
+        "가까운 사냥터로 가", "제일 가까운 안전지대로", "북쪽 사냥터로 가",
+        "강북 말고 강남으로 가",
+    ]
+    bad = [t for t in complex_ if rt.classify(t)["layer"] != "fallback"]
+    assert len(bad) <= 1, f"복합/상대 위치인데 sml(자신있게 틀림): {bad}"
+
+
 def test_colloquial_robustness(rt):
     """도치·구어체 발화(실사용)에 강건해야 한다."""
     cases = [

@@ -40,6 +40,7 @@ _MODE_PHRASES = {
     "auto_hunt": ["자동사냥 켜", "자동 사냥 켜줘", "오토 켜", "자동사냥 시작", "자동사냥 돌려",
                   "자동으로 사냥해 줘", "오토헌트 켜", "오토 모드 켜", "자동전투 켜", "자동전투 시작",
                   "자동사냥 켜줘", "오토 사냥 켜", "자동 전투 켜줘", "자동사냥 활성화", "오토 시작",
+                  "자동사냥 돌리자", "오토 돌리자", "자동사냥 하자", "오토 켜자", "자동전투 돌려",
                   "turn on auto hunt", "auto hunt on", "enable auto hunt", "auto combat on"],
     "off": ["자동사냥 꺼", "자동 사냥 꺼줘", "오토 꺼", "자동사냥 중지", "자동사냥 멈춰",
             "오토 끄기", "자동전투 꺼", "자동사냥 꺼줘", "오토 모드 꺼", "자동전투 중지",
@@ -128,6 +129,8 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"{_ko_obj(w)} 가", intent))
                 out.append((f"{w}으로 걸어가", intent))
                 out.append((f"{w}쪽으로 이동", intent))
+                out.append((f"{_ko_obj(w)} 좀 가볼까", intent))  # 구어체
+                out.append((f"{_ko_obj(w)} 가보자", intent))
             else:
                 out.append((f"go {w}", intent))
                 out.append((f"move {w}", intent))
@@ -191,6 +194,7 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
               "다 멈춰", "이동 멈춰", "그만둬", "멈추세요", "전부 멈춰", "모두 정지", "행동 멈춰",
               "그만하라고", "멈추라고", "동작 정지", "이동 중지", "정지시켜줘", "그만 가",
               "움직이지 마", "가만 있어", "거기서 멈춰", "스톱해", "그만 움직여",
+              "이제 그만하자", "그만하자", "여기까지 하자", "그만 좀 해", "멈추자", "이제 멈추자",
               "stop now", "stop moving", "stop it", "freeze", "halt", "hold on", "pause",
               "wait", "don't move", "stop right now", "cease", "hold", "stay there"):
         out.append((w, {"action": "stop"}))
@@ -282,6 +286,45 @@ def _gen_questions(ssot, rng) -> list[tuple[str, dict]]:
     return out
 
 
+def _gen_complex_location(ssot, rng) -> list[tuple[str, dict]]:
+    """복합/상대/위치의존 위치 표현 → unknown(=CF 폴백).
+
+    **왜 unknown 인가**: "강남역 동쪽 세이프존"·"가까운 사냥터"·"강북 말고 강남" 은 *공간
+    추론*(기준점 대비 방위·거리·정정)이라 단일 landmark 분류기(LCM)로는 풀 수 없다. LCM 이
+    *자신있게 틀린 landmark* 를 내는 대신(과거 "강남역 동쪽 세이프존"→gangnam_station 버그),
+    이런 발화를 unknown 으로 학습해 **CF(LLM, 좌표 프롬프트 보유)로 폴백**하게 한다.
+    단일 landmark(+'근처/쪽' 근사)는 그대로 sml(여기 포함 안 함)."""
+    out = []
+    lms = [lm for lm in ssot["landmarks"]]
+    ko_names = [lm["ko"] for lm in lms]
+    rel_dirs = ["동쪽", "서쪽", "남쪽", "북쪽", "동", "서", "남", "북", "왼쪽", "오른쪽", "위", "아래"]
+    kinds = ["사냥터", "안전지대", "세이프존", "지역", "곳", "쪽 지역"]
+
+    # (1) landmark + 상대 방위 (+선택적 다른 종류) — "강남역 동쪽으로", "강남역 동쪽 세이프존".
+    #     unknown 과다(→ monsters/slot 헤드 희석)를 피해 landmark 당 표본을 절제한다.
+    for lm in lms:
+        nm = lm["ko"]
+        for d in rng.sample(rel_dirs, k=2):
+            out.append((f"{nm} {d}으로 가", {"action": "unknown"}))
+            out.append((f"{nm} {d} 세이프존으로 이동해", {"action": "unknown"}))
+    # (2) 위치 의존(가까운/근처 + 절대 종류) — 현재 위치를 모르므로 LCM 불가.
+    for w in ["가까운", "제일 가까운", "가장 가까운", "근처", "주변", "여기서 가까운", "근처에 있는"]:
+        for k in kinds:
+            out.append((f"{w} {k}로 가", {"action": "unknown"}))
+            out.append((f"{w} {k}으로 이동", {"action": "unknown"}))
+    # (3) 모호 방위 지역(어느 사냥터인지 불명) — "북쪽 사냥터로", "남쪽 지역으로".
+    for d in ["동쪽", "서쪽", "남쪽", "북쪽"]:
+        for k in ["사냥터", "지역", "쪽"]:
+            out.append((f"{d} {k}으로 가", {"action": "unknown"}))
+    # (4) 정정/배제 — "강북 말고 강남", "강남 아니고 관악".
+    for a in rng.sample(ko_names, k=min(10, len(ko_names))):
+        b = rng.choice(ko_names)
+        if a != b:
+            out.append((f"{a} 말고 {b}로 가", {"action": "unknown"}))
+            out.append((f"{a} 아니고 {b}으로", {"action": "unknown"}))
+    return out
+
+
 def _gen_smalltalk(rng) -> list[tuple[str, dict]]:
     """게임과 *무관한* 일상 문장을 unknown 으로(outlier exposure). softmax 분류기는
     학습 분포 밖(OOD) 입력을 가까운 명령으로 *과신* 하는데("날씨 좋다"→hunt conf 1.0),
@@ -321,6 +364,7 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs += _gen_hunt(ssot, rng)
     pairs += _gen_simple(ssot, rng)
     pairs += _gen_questions(ssot, rng)
+    pairs += _gen_complex_location(ssot, rng)
     pairs += _gen_smalltalk(rng)
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).
     dedup: dict[str, dict] = {}
