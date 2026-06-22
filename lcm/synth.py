@@ -229,7 +229,8 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
                             {"action": "hunt", "location": lm["id"], "monsters": [arch]}))
     # 위치 없는 사냥(레벨 추천 — location 비움).
     for t in ("사냥하자", "사냥 시작", "자동으로 사냥해", "사냥하러 가자", "let's hunt",
-              "사냥터 가서 사냥", "몬스터 잡으러 가자", "사냥 좀 하자"):
+              "사냥터 가서 사냥", "몬스터 잡으러 가자", "사냥 좀 하자",
+              "사냥해", "사냥", "사냥해줘", "잡아줘", "몹 잡아", "사냥 좀", "몬스터 잡아"):
         out.append((t, {"action": "hunt"}))
     return out
 
@@ -496,6 +497,24 @@ def _gen_smalltalk(rng) -> list[tuple[str, dict]]:
     return out
 
 
+def _jamo_variant(text: str, rng) -> str:
+    """한글 1~2글자 받침 탈락/모음 ±1(결정적 — augment 확률성 보완해 phonetic 안정)."""
+    idxs = [i for i, c in enumerate(text) if "가" <= c <= "힣"]
+    if not idxs:
+        return text
+    chars = list(text)
+    k = 2 if len(idxs) >= 3 and rng.random() < 0.5 else 1
+    for i in rng.sample(idxs, min(k, len(idxs))):
+        code = ord(chars[i]) - 0xAC00
+        cho, jung, jong = code // 588, (code % 588) // 28, code % 28
+        if jong and rng.random() < 0.5:
+            jong = 0
+        else:
+            jung = (jung + rng.choice([-1, 1])) % 21
+        chars[i] = chr(0xAC00 + (cho * 21 + jung) * 28 + jong)
+    return "".join(chars)
+
+
 def generate(ssot: dict, seed: int = 7) -> list[dict]:
     """모든 템플릿을 펼쳐 (text, intent) 페어 리스트를 만든다(재현 가능)."""
     rng = random.Random(seed)
@@ -513,4 +532,13 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     dedup: dict[str, dict] = {}
     for text, intent in pairs:
         dedup[text.strip()] = intent
-    return [{"text": t, "intent": i} for t, i in dedup.items()]
+    rows = [{"text": t, "intent": i} for t, i in dedup.items()]
+    # 결정적 자모 변형(명령 발화만) — augment 확률성을 보완해 phonetic 강건성을 안정화.
+    rng2 = random.Random(seed + 13)
+    cmd = [r for r in rows if r["intent"]["action"] != "unknown"]
+    for r in rng2.sample(cmd, k=min(1500, len(cmd))):
+        v = _jamo_variant(r["text"], rng2)
+        if v.strip() and v not in dedup:
+            dedup[v] = r["intent"]
+            rows.append({"text": v, "intent": r["intent"]})
+    return rows

@@ -18,6 +18,25 @@ typedef InferFn = Map<String, List<double>> Function(
 
 final RegExp _meaningful = RegExp(r'[가-힣a-zA-Z0-9]');
 
+// 다중동작 분할 — "착용/물약 + 후속" 연결어미를 종결로 복원(infer.py split_compound 와 동일).
+const _compoundConn = [
+  ['착용하고', '착용'], ['장착하고', '장착'], ['입고', '입어'],
+  ['먹고', '먹어'], ['마시고', '마셔'], ['쓰고', '써'], ['빨고', '빨아'],
+];
+
+List<String>? splitCompound(String text) {
+  for (final c in _compoundConn) {
+    final marker = '${c[0]} ';
+    final i = text.indexOf(marker);
+    if (i > 0) {
+      final first = (text.substring(0, i) + c[1]).trim();
+      final rest = text.substring(i + marker.length).trim();
+      if (rest.isNotEmpty) return [first, rest];
+    }
+  }
+  return null;
+}
+
 class LcmClassifier {
   LcmClassifier({
     required this.tokenizer,
@@ -56,8 +75,35 @@ class LcmClassifier {
     return 1.0 / sum; // exp(max-m)=1 → 최댓값 확률 = 1/Σexp(x-m)
   }
 
-  /// 3계층 2차 판정. 반환: {layer:'sml'|'fallback', confidence, command?}.
+  /// 3계층 2차 판정. 다중동작이면 actions 배열로 결합. {layer:'sml'|'fallback', ...}.
   Map<String, dynamic> classify(String text) {
+    final parts = splitCompound(text);
+    if (parts != null) {
+      final subs = parts.map(_classifyOne).toList();
+      if (subs.every((s) => s['layer'] == 'sml')) {
+        return {
+          'layer': 'sml',
+          'confidence': subs.map((s) => s['confidence'] as double).reduce(math.min),
+          'command': {
+            'actions': [for (final s in subs) s['intent']],
+            'say': '',
+          },
+        };
+      }
+      return {'layer': 'fallback', 'confidence': 0.0};
+    }
+    final r = _classifyOne(text);
+    if (r['layer'] == 'sml') {
+      return {
+        'layer': 'sml',
+        'confidence': r['confidence'],
+        'command': {'actions': [r['intent']], 'say': ''},
+      };
+    }
+    return r;
+  }
+
+  Map<String, dynamic> _classifyOne(String text) {
     if (!_meaningful.hasMatch(text)) {
       return {'layer': 'fallback', 'confidence': 0.0};
     }
@@ -94,13 +140,6 @@ class LcmClassifier {
       }
     }
     final intent = decodeIntent(heads, labels);
-    return {
-      'layer': 'sml',
-      'confidence': conf,
-      'command': {
-        'actions': [intent],
-        'say': '',
-      },
-    };
+    return {'layer': 'sml', 'confidence': conf, 'intent': intent};
   }
 }

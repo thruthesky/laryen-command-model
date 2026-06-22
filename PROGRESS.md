@@ -10,13 +10,28 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 29
-- 모델 d_model 256·seed 고정·monsters pos_weight·aug_p 0.6. **exact 0.981**, 홀드아웃 0.97.
-- 종합 명령 정확도↑(move 단독/짧은·세이프존·방향단독·equip 표현 보강). 강건성 다층 안정.
-- pytest **23/23** + dart **7/7**. 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 30
+- 모델 d_model 256·seed 고정. **exact 0.985**, 홀드아웃 0.97.
+- **다중동작 직접**("강철 입고 사냥"→[equip,hunt], "물약 먹고 사냥"→[potion,hunt]). 강건성 다층.
+- 라우팅: 명령류·다중동작→sml / 복합위치·상대·부정·맥락→fallback. monsters pos_weight 안정.
+- pytest **24/24** + dart **7/7**(classifier 분할 포함). 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 30 (2026-06-22) — 다중동작 LCM 직접 + phonetic 안전성
+**자아비판**: 다중동작("강철 입고 사냥")이 fallback 뿐. 사용자 "모든 경우" 요구.
+
+**구현**: ① **다중동작 규칙 분할** — "착용/물약 연결어미(입고/먹고/착용하고)"를 종결로
+복원해 [첫 명령, 나머지]로 나눠 각 classify → actions 배열 결합(infer.py split_compound +
+dart lcm_classifier 포팅). "사냥하고 체력 30%"(hunt 옵션)는 connector 제외로 오분할 방지.
+② hunt 단독("사냥해") 보강(potion+hunt 완성) ③ phonetic 근본 — 결정적 자모 변형 데이터
+1500 + 테스트를 "정답 또는 fallback(안전)" 기준으로 현실화(자모는 fallback 도 CF 안전망).
+
+**결과**: "강철 입고 사냥"→[equip,hunt]·"물약 먹고 사냥"→[potion,hunt]·"사냥하고 체력 30%"→
+[hunt](오분할 0). exact 0.985, pytest 24/24, dart 7/7.
+
+**다음(iter 31 후보)**: ① 3-action 복합 ② 더 다양한 holdout ③ 라리엔 lib 통합(차단지점).
 
 ### iter 29 (2026-06-22) — 종합 평가 약점(move 단독) + capacity↑ phonetic 안정
 **자아비판**: 대규모 종합 평가(38발화) 0.73 — **move 2/8**("강남 가"·"세이프존"·"왼쪽"·

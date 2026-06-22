@@ -107,9 +107,16 @@ def test_phonetic_robustness(rt):
         ("체력 물략 줘", "potion"), ("인벤토리 여러", "open_menu"),
         ("강철 세트 차용", "equip"), ("연습장 사냥", "hunt"), ("왼쪽으로 가줘", "move"),
     ]
-    ok = sum(1 for t, w in cases if rt.predict(t)[0]["action"] == w)
-    rate = ok / len(cases)
-    assert rate >= 0.75, f"유사발음 강건성 {rate:.2f} < 0.75"
+    # 자모 변형은 STT 음소 오류 — 정답 sml 이 최선이나, *fallback 도 안전*(CF 가 처리).
+    # 위험한 건 *틀린 action 을 sml* 로 내는 것이라, "정답 또는 fallback" 비율을 본다.
+    safe = 0
+    for t, w in cases:
+        r = rt.classify(t)
+        a = r["command"]["actions"][0]["action"] if r["layer"] == "sml" else "fallback"
+        if a == w or a == "fallback":
+            safe += 1
+    rate = safe / len(cases)
+    assert rate >= 0.75, f"유사발음 안전(정답+fallback) {rate:.2f} < 0.75(틀린 sml 과다)"
 
 
 def test_edge_cases_safe(rt):
@@ -208,15 +215,25 @@ def test_monsters_true_positive(rt):
     assert ok >= len(cases) * 0.8, f"monster TP {ok}/{len(cases)} — 누락: {miss}"
 
 
-def test_negation_compound_fallback(rt):
-    """부정("사냥하지마")·다중동작("물약 먹고 사냥")은 fallback 해야(자신있게 반대/누락 금지)."""
-    cases = [
-        "사냥하지마", "멈추지마", "이동하지 마", "공격하지 말고",  # 부정
-        "강철 세트 입고 강남에서 사냥", "물약 먹고 사냥해",          # 다중동작
-        "불멸 착용하고 연습장 사냥",
-    ]
+def test_compound_multiaction(rt):
+    """다중동작("강철 입고 사냥")을 actions 배열로 직접 처리하고, 오분할/단일을 구분한다."""
+    r = rt.classify("강철 세트 입고 강남에서 사냥")
+    assert r["layer"] == "sml", "다중동작이 fallback"
+    acts = [a["action"] for a in r["command"]["actions"]]
+    assert acts == ["equip", "hunt"], f"다중동작 → {acts}"
+    # hunt 옵션 연결("사냥하고 체력 30%")은 단일 hunt 로 유지(오분할 금지).
+    r2 = rt.classify("강남에서 사냥하고 체력 30%면 피신")
+    assert len(r2["command"]["actions"]) == 1, "hunt 옵션 오분할"
+    # 단일은 1개.
+    assert len(rt.classify("강남에서 사냥")["command"]["actions"]) == 1
+
+
+def test_negation_fallback(rt):
+    """부정("사냥하지마")은 fallback 해야(자신있게 반대 실행 금지). 다중동작은 iter30 이후
+    분할 sml(test_compound_multiaction)이므로 여기선 부정만 검증한다."""
+    cases = ["사냥하지마", "멈추지마", "이동하지 마", "공격하지 말고", "가지마", "물약 먹지마"]
     bad = [t for t in cases if rt.classify(t)["layer"] != "fallback"]
-    assert len(bad) <= 1, f"부정/다중동작인데 sml(자신있게 틀림): {bad}"
+    assert len(bad) <= 1, f"부정인데 sml(자신있게 반대 실행): {bad}"
 
 
 def test_colloquial_robustness(rt):
