@@ -32,6 +32,30 @@ _POTION_WORDS = {
     "atkspeed": ["공격속도", "공격 속도", "공속", "atkspeed", "attack speed"],
     "crit": ["크리", "크리티컬", "치명타", "crit", "critical"],
 }
+# archetype wire name → 한국어 발음/의미 alias(STT 한국어 발화 대응 — 다른 팀 #3).
+# 입력은 한국어 alias 도 받되, intent monsters 는 항상 wire name 으로 정규화한다.
+# 추후 라리엔 SSOT(fast_path·CF prompt 공유)로 승격 예정.
+_MONSTER_KO = {
+    "Brute": ["브루트"], "Caster": ["캐스터", "캐스타"], "Skirmisher": ["스커미셔"],
+    "Coward": ["코워드", "겁쟁이"], "PackHunter": ["팩헌터"], "Guardian": ["가디언"],
+    "Ambusher": ["앰부셔"], "Trickster": ["트릭스터"], "Bone": ["본", "뼈"],
+    "Demonic": ["데모닉", "악마"], "Paladin": ["팔라딘", "성기사"],
+    "DemonicKing": ["데모닉킹", "악마왕"], "Morak": ["모락"], "Zorak": ["조락", "조라크"],
+    "Fred": ["프레드"], "Swat": ["스왓", "스왓군인"], "Xbot": ["엑스봇"], "Mira": ["미라"],
+    "Hellion": ["헬리온"], "BiBot": ["바이봇"], "Skeleton": ["스켈레톤", "해골"],
+    "GreenRobot": ["그린로봇", "초록로봇"], "Gozila": ["고질라"], "Mecha": ["메카"],
+    "GuitarBot": ["기타봇"], "Ganfaul": ["간폴"], "Mannequin": ["마네킹"],
+    "Pirate": ["파이렛", "해적"], "PumkinHulk": ["펌킨헐크", "호박헐크"],
+    "SkeletonZombie": ["스켈레톤좀비", "해골좀비"], "Vampire": ["뱀파이어", "흡혈귀"],
+    "Yaku": ["야쿠"],
+}
+
+
+def _mon_name(arch: str, rng) -> str:
+    """archetype 의 입력 표기 — 한국어 alias 또는 wire name 무작위(둘 다 학습)."""
+    return rng.choice(_MONSTER_KO.get(arch, []) + [arch])
+
+
 _SLOT_WORDS = {
     "weapon": ["무기", "weapon"], "armor": ["갑옷", "방어구", "armor"],
     "accessory": ["장신구", "악세사리", "accessory"],
@@ -187,19 +211,20 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
             else:
                 out.append((f"hunt at {al}", loc))
         al = rng.choice([a for a in lm["aliases"] if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
-        # monster 포함 hunt 를 충분히(monsters 헤드 학습 — 과거 누락 0.83). 다양한 표현·archetype.
+        # monster 포함 hunt — *한국어 alias/wire 무작위* 입력, intent 는 wire name.
         for mon in rng.sample(archs, k=4):
+            nm = _mon_name(mon, rng)
             for v in ("잡아", "사냥해", "사냥해줘", "처치해"):
-                out.append((f"{al}에서 {mon} {v}",
+                out.append((f"{al}에서 {nm} {v}",
                             {"action": "hunt", "location": lm["id"], "monsters": [mon]}))
         # 2종 동시 사냥(멀티라벨 학습).
         m2 = rng.sample(archs, k=2)
-        out.append((f"{al}에서 {m2[0]}랑 {m2[1]} 사냥",
+        out.append((f"{al}에서 {_mon_name(m2[0], rng)}랑 {_mon_name(m2[1], rng)} 사냥",
                     {"action": "hunt", "location": lm["id"], "monsters": m2}))
         # monster + retreat (소수 — mon 을 hp 마다 다르게 골라 location+hp→mon 상관 분산).
         for hp in rng.sample([10, 30, 50, 70, 90], k=2):
             mon = rng.choice(archs)
-            out.append((f"{al}에서 {mon} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
+            out.append((f"{al}에서 {_mon_name(mon, rng)} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
                         {"action": "hunt", "location": lm["id"], "monsters": [mon],
                          "retreatToSafeZone": True, "retreatHpPct": hp}))
         # monster 없는 retreat — *전체 hp*(10~90) 충분히 학습해 "hp≠monster" 를 각인,
@@ -221,8 +246,9 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
             lm = rng.choice(hunts)
             al = rng.choice([a for a in lm["aliases"]
                              if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
+            nm = _mon_name(arch, rng)  # 한국어 alias/wire 무작위
             for v in ("잡아", "사냥해", "처치해", "사냥해줘", "잡자"):
-                out.append((f"{al}에서 {arch} {v}",
+                out.append((f"{al}에서 {nm} {v}",
                             {"action": "hunt", "location": lm["id"], "monsters": [arch]}))
     # 위치 없는 사냥(레벨 추천 — location 비움).
     for t in ("사냥하자", "사냥 시작", "자동으로 사냥해", "사냥하러 가자", "let's hunt",

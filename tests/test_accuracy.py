@@ -207,6 +207,21 @@ def test_monsters_no_false_positive(rt):
     assert not fp, f"monster 미언급인데 삽입(false positive): {fp}"
 
 
+def test_korean_monster_alias(rt):
+    """한국어 monster 발음("캐스터"·"해골"·"흡혈귀")을 wire name 으로 정규화(다른 팀 #3)."""
+    cases = [("강남에서 캐스터 사냥", "Caster"), ("연습장에서 해골 잡아", "Skeleton"),
+             ("강동 꽃밭에서 뼈 사냥", "Bone"), ("관악산에서 팔라딘 잡아", "Paladin"),
+             ("강남에서 흡혈귀 사냥", "Vampire"), ("강북에서 데모닉 잡아", "Demonic"),
+             ("강서에서 해적 사냥", "Pirate")]
+    ok = 0
+    for t, m in cases:
+        r = rt.classify(t)
+        mons = r["command"]["actions"][0].get("monsters", []) if r["layer"] == "sml" else []
+        if m in mons:
+            ok += 1
+    assert ok >= len(cases) * 0.8, f"한국어 monster {ok}/{len(cases)}"
+
+
 def test_monsters_true_positive(rt):
     """monster 명시 hunt 는 그 monster 가 잡혀야 한다(현실 조합 ≥80% — 작은 모델 비결정 허용)."""
     cases = [
