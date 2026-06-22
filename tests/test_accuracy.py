@@ -226,6 +226,11 @@ def test_compound_multiaction(rt):
     assert len(r2["command"]["actions"]) == 1, "hunt 옵션 오분할"
     # 단일은 1개.
     assert len(rt.classify("강남에서 사냥")["command"]["actions"]) == 1
+    # 3-action 재귀 분할("물약 먹고 강철 입고 사냥").
+    r3 = rt.classify("물약 먹고 강철 입고 강남에서 사냥")
+    if r3["layer"] == "sml":
+        a3 = [a["action"] for a in r3["command"]["actions"]]
+        assert a3 == ["potion", "equip", "hunt"], f"3-action → {a3}"
 
 
 def test_negation_fallback(rt):

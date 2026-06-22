@@ -25,14 +25,19 @@ const _compoundConn = [
 ];
 
 List<String>? splitCompound(String text) {
+  int bestI = -1;
+  List<String>? best;
   for (final c in _compoundConn) {
-    final marker = '${c[0]} ';
-    final i = text.indexOf(marker);
-    if (i > 0) {
-      final first = (text.substring(0, i) + c[1]).trim();
-      final rest = text.substring(i + marker.length).trim();
-      if (rest.isNotEmpty) return [first, rest];
+    final i = text.indexOf('${c[0]} ');
+    if (i > 0 && (bestI < 0 || i < bestI)) {
+      bestI = i;
+      best = c;
     }
+  }
+  if (best != null) {
+    final first = (text.substring(0, bestI) + best[1]).trim();
+    final rest = text.substring(bestI + best[0].length + 1).trim();
+    if (rest.isNotEmpty) return [first, rest];
   }
   return null;
 }
@@ -79,13 +84,16 @@ class LcmClassifier {
   Map<String, dynamic> classify(String text) {
     final parts = splitCompound(text);
     if (parts != null) {
-      final subs = parts.map(_classifyOne).toList();
-      if (subs.every((s) => s['layer'] == 'sml')) {
+      // 첫 분절은 단일, 나머지는 재귀 분할(3+ action 복합 지원).
+      final first = _classifyOne(parts[0]);
+      final rest = classify(parts[1]);
+      if (first['layer'] == 'sml' && rest['layer'] == 'sml') {
         return {
           'layer': 'sml',
-          'confidence': subs.map((s) => s['confidence'] as double).reduce(math.min),
+          'confidence':
+              math.min(first['confidence'] as double, rest['confidence'] as double),
           'command': {
-            'actions': [for (final s in subs) s['intent']],
+            'actions': [first['intent'], ...(rest['command']['actions'] as List)],
             'say': '',
           },
         };

@@ -19,6 +19,18 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 31 (2026-06-22) — 3+ action 재귀 분할(학습 없이)
+**자아비판**: 다중동작이 2개까지만. "물약 먹고 강철 입고 사냥"(3-action)→fallback.
+
+**구현**: split_compound 를 *가장 앞 연결어미*에서 분할로 수정(first 가 단일 보장) + classify
+재귀화(rest 를 재분할) → 3+ action 지원. infer + dart 동일. 로직만(재학습 없음).
+
+**결과**: "체력 물약 마시고 불멸 착용하고 연습장 사냥"→[potion,equip,hunt]. "강철 입고 사냥"
+→[equip,hunt], "사냥하고 체력 30%"→[hunt](오분할 0). pytest 24/24, dart 7/7.
+잔존: "물약 먹고..."는 "물약 먹어" 첫분절 conf 약해 fallback(iter32 — "물약 먹어" 보강).
+
+**다음(iter 32 후보)**: ① "물약 먹어" 단독 보강 ② 더 다양한 holdout ③ 라리엔 통합.
+
 ### iter 30 (2026-06-22) — 다중동작 LCM 직접 + phonetic 안전성
 **자아비판**: 다중동작("강철 입고 사냥")이 fallback 뿐. 사용자 "모든 경우" 요구.
 
