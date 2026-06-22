@@ -56,7 +56,8 @@ DEFAULT_THRESHOLD = 0.8
 
 
 class LcmRuntime:
-    def __init__(self, ckpt: Path | str = CKPT, threshold: float = DEFAULT_THRESHOLD):
+    def __init__(self, ckpt: Path | str = CKPT, threshold: float = DEFAULT_THRESHOLD,
+                 multi_threshold: float = 0.4):
         self.ls = LabelSpace(load_ssot())
         self.tk = load_tokenizer()
         blob = torch.load(ckpt, map_location="cpu")
@@ -66,6 +67,10 @@ class LcmRuntime:
         self.model.load_state_dict(blob["model"])
         self.model.eval()
         self.threshold = threshold
+        # monster/auto_potions 등 multi-label 임계. 0.5 → 0.4 로 낮춰 monster TP 의 MPS
+        # 학습 비결정성(0.4~0.5 경계 흔들림)을 흡수한다(2026-06-22). FP 는 pos_weight 6 +
+        # spurious correlation 차단 데이터로 억제됨. 클라 lcm_classifier.multiThreshold 동기.
+        self.multi_threshold = multi_threshold
 
     @torch.no_grad()
     def predict(self, text: str) -> tuple[dict, float]:
@@ -75,7 +80,7 @@ class LcmRuntime:
         logits = self.model(input_ids, attn)
         # multi_threshold 0.5 — monsters false positive 는 가중 2x + spurious correlation
         # 제거(데이터)로 잡고, 임계는 표준 0.5 로 둬 약한 monster(Bone 등) true positive 유지.
-        heads = predict_heads(logits, self.model.head_specs, multi_threshold=0.5)
+        heads = predict_heads(logits, self.model.head_specs, multi_threshold=self.multi_threshold)
         intent = decode_intent(heads, self.ls)
         return intent, action_confidence(logits)
 

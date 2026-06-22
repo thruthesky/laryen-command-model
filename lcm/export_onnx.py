@@ -98,7 +98,7 @@ def main() -> int:
     labels_out = {
         "labels": {n: lab for n, _, lab in ls.heads()},
         "head_specs": [{"name": n, "kind": k} for n, k, _ in ls.heads()],
-        "threshold": 0.8, "pad_len": PAD_LEN, "pad_id": c["pad_id"],
+        "threshold": 0.8, "multi_threshold": 0.4, "pad_len": PAD_LEN, "pad_id": c["pad_id"],
     }
     (ROOT / "artifacts" / "lcm-labels.json").write_text(
         json.dumps(labels_out, ensure_ascii=False, indent=2), encoding="utf-8")

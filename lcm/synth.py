@@ -212,7 +212,9 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"hunt at {al}", loc))
         al = rng.choice([a for a in lm["aliases"] if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
         # monster 포함 hunt — *한국어 alias/wire 무작위* 입력, intent 는 wire name.
-        for mon in rng.sample(archs, k=4):
+        # k=6(↑4): monster-only 보강이 location+monster TP 를 희석한 회귀(2026-06-22
+        #   test_monsters_true_positive 3/6) 대응 — location+monster 표본을 늘려 균형.
+        for mon in rng.sample(archs, k=6):
             nm = _mon_name(mon, rng)
             for v in ("잡아", "사냥해", "사냥해줘", "처치해"):
                 out.append((f"{al}에서 {nm} {v}",
@@ -242,7 +244,8 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
     # 모든 archetype 균등 학습 — monsters(multi-label) TP 가 학습 비결정성에 흔들리지 않게
     # 32종 각각 충분한 hunt 예시 보장(과거 일부 archetype false negative 반복).
     for arch in archs:
-        for _ in range(5):  # archetype 당 충분(monsters multi-label TP 안정 — 약/혼동 방지)
+        for _ in range(9):  # archetype 당 충분(↑5→9: monster-only 보강 후 location+monster
+            #   TP 안정 — 약/혼동 방지. test_monsters_true_positive 회귀 대응 2026-06-22)
             lm = rng.choice(hunts)
             al = rng.choice([a for a in lm["aliases"]
                              if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
@@ -255,6 +258,19 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
               "사냥터 가서 사냥", "몬스터 잡으러 가자", "사냥 좀 하자",
               "사냥해", "사냥", "사냥해줘", "잡아줘", "몹 잡아", "사냥 좀", "몬스터 잡아"):
         out.append((t, {"action": "hunt"}))
+    # ── monster-only(위치 없이 *몬스터만*) — 실측 발굴 이슈(2026-06-22 probe_lang):
+    #    "캐스터 사냥"(monsters 누락)·"hunt casters"(fallback) 미지원이었다. location 없이
+    #    monster 지정 발화를 한/영으로 학습한다(클라가 레벨추천 location 으로 보충). ──────
+    for arch in archs:
+        ko = _mon_name(arch, rng)               # 한국어 alias/wire 무작위
+        low = arch.lower()                      # 영어 wire 소문자(caster)
+        for v in ("사냥", "사냥해", "사냥해줘", "잡아", "처치해", "잡자"):
+            out.append((f"{ko} {v}", {"action": "hunt", "monsters": [arch]}))
+        # 영어 monster(소문자 단수/복수) — "hunt caster"·"kill casters"·"go hunt brutes".
+        for en in (low, low + "s"):
+            for tmpl in (f"hunt {en}", f"kill {en}", f"go hunt {en}", f"hunt the {en}",
+                         f"attack {en}", f"fight {en}"):
+                out.append((tmpl, {"action": "hunt", "monsters": [arch]}))
     return out
 
 
@@ -359,6 +375,30 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
         out.append((t, {"action": "auto_combat", "mode": "auto_hunt"}))
     for t in ["auto hunt off", "turn off auto hunt", "stop auto hunt"]:
         out.append((t, {"action": "auto_combat", "mode": "off"}))
+    # 디버그 패널 토글(open_menu/debug) — 한/영 on/off/toggle. 사용자 핵심 발화
+    # "turn off the debug panel"(영어 전체 문장) 포함. 게임은 토글이라 on/off/show/hide 를
+    # 모두 같은 target=debug 로 학습(실행 시 현재 상태를 반전한다).
+    debug_phrases = [
+        "디버그 패널", "디버그패널", "디버그 켜", "디버그 꺼", "디버그 패널 켜",
+        "디버그 패널 꺼", "디버그 패널 열어", "디버그 패널 닫아", "디버그 모드",
+        "디버그 패널 보여줘", "디버그 패널 숨겨", "디버그 켜줘", "디버그 꺼줘",
+        "디버그 패널 켜줘", "디버그 패널 꺼줘", "디버그 정보 보여줘", "디버그 정보 켜",
+        "fps 표시", "fps 보여줘", "fps 켜", "fps 꺼", "성능 표시 켜", "프레임 표시",
+        "debug panel", "debug", "the debug panel", "turn on the debug panel",
+        "turn off the debug panel", "turn on debug panel", "turn off debug panel",
+        "show the debug panel", "hide the debug panel", "show debug panel",
+        "hide debug panel", "toggle debug panel", "toggle the debug panel",
+        "enable debug panel", "disable debug panel", "open debug panel",
+        "close debug panel", "show fps", "hide fps", "debug mode on",
+        "debug mode off", "show debug info", "turn the debug panel off",
+        "turn the debug panel on",
+        # "panel" 생략형(실측 발굴: "toggle debug"→move 오분류) + fps 토글.
+        "toggle debug", "toggle fps", "toggle the debug", "debug toggle",
+        "switch debug", "switch on debug", "switch off debug", "fps toggle",
+        "디버그 토글", "fps 토글", "디버그 전환",
+    ]
+    for t in debug_phrases:
+        out.append((t, {"action": "open_menu", "target": "debug"}))
     # unknown(잡담·게임 질문 — CF explain/chat 폴백 대상).
     for w in _UNKNOWN:
         out.append((w, {"action": "unknown"}))
