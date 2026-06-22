@@ -412,6 +412,22 @@ def _gen_negation_compound(ssot, rng) -> list[tuple[str, dict]]:
     return out
 
 
+def _gen_context_dependent(rng) -> list[tuple[str, dict]]:
+    """맥락 지시어("거기서"·"그것도"·"아까") 발화 → unknown(=CF 멀티턴 폴백).
+
+    단일 발화 분류기는 이전 발화 맥락이 없어 "거기"(어느 곳)·"그것"(무엇)을 풀 수 없다.
+    자신있게 틀리는 대신("그것도 착용"→auto_combat 오류) CF(멀티턴 세션)로 폴백한다."""
+    ctx = [
+        "거기서 사냥", "거기로 가", "거기서 잡아", "거기 가자", "거기로 이동",
+        "그것도 착용", "그거 써", "그거 먹어", "그것 장착", "그거 입어",
+        "아까 거기로", "아까 그곳으로", "방금 그거", "방금 거기로", "방금 그 위치",
+        "그 다음 사냥", "그 다음 물약", "그 다음에 이동", "그러고 나서 사냥",
+        "계속 사냥", "계속 이동", "또 해줘", "한 번 더 해", "그거 취소", "방금 명령 취소",
+        "거기 말고 딴 데", "그쪽 말고", "아까 그 몬스터", "거기 있는 거",
+    ]
+    return [(t, {"action": "unknown"}) for t in ctx]
+
+
 def _gen_polite(ssot, rng) -> list[tuple[str, dict]]:
     """존댓말 어미("~해 주세요/주실래요/주시겠어요") — 실사용 흔한 공손 표현 sml 화."""
     out = []
@@ -481,6 +497,7 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs += _gen_questions(ssot, rng)
     pairs += _gen_complex_location(ssot, rng)
     pairs += _gen_negation_compound(ssot, rng)
+    pairs += _gen_context_dependent(rng)
     pairs += _gen_polite(ssot, rng)
     pairs += _gen_smalltalk(rng)
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).

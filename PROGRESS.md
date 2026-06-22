@@ -10,14 +10,27 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 27
-- 모델 d_model 192·seed 고정·자모 augment aug_p 0.6. **exact 0.983**, 홀드아웃 0.97.
-- 강건성 다층(공백·자모1~3글자·구어·존댓말·은어·한글숫자·edge). 슬롯(gear set/단품·menu·mode·
-  unequip) 정확. 라우팅: 명령류→sml / 복합·상대·부정·다중→fallback.
+## 현재 상태(메트릭) — iter 28
+- 모델 d_model 192·seed 고정·monsters pos_weight 8. **exact 0.978**, 홀드아웃 0.97.
+- 강건성 다층. 라우팅: 명령류→sml / 복합·상대·부정·다중·맥락의존→fallback. monsters TP/FP 안정.
 - pytest **23/23** + dart **7/7**. 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 28 (2026-06-22) — 맥락 지시어 fallback + monsters pos_weight(근본 안정)
+**자아비판**: 맥락 의존("그것도 착용"→auto_combat 오류·"거기서 사냥"→hunt). + monsters TP
+가 데이터 변경마다 반복 흔들림(iter22/24/26/27 — 가중·archetype 5배로도 미해결).
+
+**구현**: ① 맥락 지시어("거기/그것/아까/방금/그 다음") 발화 → unknown(CF 멀티턴 폴백) ②
+**monsters pos_weight 8** — 극단 불균형(32종 중 1개만 1)을 BCE positive 손실로 직접 보정
+(데이터/가중 튜닝의 정공법). 임계 0.5·가중 곱셈 제거.
+
+**결과**: "그것도 착용"·"거기서 사냥"→fallback, **monster TP 3/3 + FP 0/3 동시 달성**(반복
+흔들림 종결). exact 0.978, pytest 23/23, dart 7/7.
+교훈: 멀티라벨 불균형은 pos_weight 가 가중 곱셈·데이터 증강보다 근본적.
+
+**다음(iter 29 후보)**: ① 다중동작 LCM 직접 ② 더 다양한 holdout ③ 라리엔 lib 통합(차단지점).
 
 ### iter 27 (2026-06-22) — gear 단품 + phonetic 근본 안정화
 **자아비판**: 슬롯 측정 — gear 단품("불멸 갑옷만 끼워"·"강철 장신구만")→fallback("끼워"·동사
