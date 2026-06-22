@@ -117,6 +117,10 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
             if any("가" <= c <= "힣" for c in al):  # 한글 별칭
                 for v in rng.sample(move_verbs, k=4):
                     out.append((f"{_ko_obj(al)} {v}".strip(), intent))
+                # 조사 없는 짧은 표현("강남 가"·"강북 이동").
+                out.append((f"{al} 가", intent))
+                out.append((f"{al} 이동", intent))
+                out.append((f"{al} 가자", intent))
                 # 지시어 prefix("저기/거기 X로 가").
                 for pre in rng.sample(["저기", "거기", "그", "일단"], k=2):
                     out.append((f"{pre} {al}로 가", intent))
@@ -131,7 +135,8 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
     safe_phr = ["세이프존에서 대기해", "안전지대로 가서 쉬어", "쉼터로 가", "마을로 이동",
                 "안전지대로 피신", "세이프존으로 가줘", "안전한 곳으로 가", "대기 장소로 가",
                 "도망쳐", "후퇴해", "피신해", "대피해", "안전지대로 도망", "안전한 곳으로 피해",
-                "세이프존으로 후퇴", "도망가자", "피하자"]  # 후퇴 은어 → 안전지대 이동
+                "세이프존으로 후퇴", "도망가자", "피하자",
+                "세이프존", "안전지대", "쉼터", "세이프존 가", "안전지대 가"]  # 단독·짧은
     for t in safe_phr:
         out.append((t, {"action": "move", "location": "safe"}))
     # 순수 방향.
@@ -144,6 +149,8 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"{w}쪽으로 이동", intent))
                 out.append((f"{_ko_obj(w)} 좀 가볼까", intent))  # 구어체
                 out.append((f"{_ko_obj(w)} 가보자", intent))
+                out.append((w, intent))                         # 단독 방향("왼쪽")
+                out.append((f"{_ko_obj(w)}", intent))            # "왼쪽으로"
             else:
                 out.append((f"go {w}", intent))
                 out.append((f"move {w}", intent))
@@ -273,7 +280,9 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
     for sid in ssot["gear_sets"]:
         for nm in set_ko.get(sid, [sid]):
             for t in (f"{nm} 세트 착용", f"{nm} 세트 입어", f"{nm}의 세트 아이템 착용",
-                      f"{nm} 세트 장착", f"{nm} 풀세트 착용", f"equip {sid} set", f"{nm} 세트로 갈아입어"):
+                      f"{nm} 세트 장착", f"{nm} 풀세트 착용", f"equip {sid} set", f"{nm} 세트로 갈아입어",
+                      f"{nm}로 갈아입자", f"{nm} 장비", f"{nm} 입어", f"{nm}로 갈아입어",
+                      f"{nm} 세트로", f"{nm} 장비 착용"):
                 out.append((t, {"action": "equip", "set": sid}))
     gear_ko = {
         "victor_weapon": "빅터의 검", "victor_armor": "빅터의 갑옷", "victor_accessory": "빅터의 장신구",

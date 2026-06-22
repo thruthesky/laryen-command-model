@@ -10,13 +10,25 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 28
-- 모델 d_model 192·seed 고정·monsters pos_weight 8. **exact 0.978**, 홀드아웃 0.97.
-- 강건성 다층. 라우팅: 명령류→sml / 복합·상대·부정·다중·맥락의존→fallback. monsters TP/FP 안정.
+## 현재 상태(메트릭) — iter 29
+- 모델 d_model 256·seed 고정·monsters pos_weight·aug_p 0.6. **exact 0.981**, 홀드아웃 0.97.
+- 종합 명령 정확도↑(move 단독/짧은·세이프존·방향단독·equip 표현 보강). 강건성 다층 안정.
 - pytest **23/23** + dart **7/7**. 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 29 (2026-06-22) — 종합 평가 약점(move 단독) + capacity↑ phonetic 안정
+**자아비판**: 대규모 종합 평가(38발화) 0.73 — **move 2/8**("강남 가"·"세이프존"·"왼쪽"·
+"뒤로"→fallback), equip 일부. + phonetic 반복 회귀(aug_p 0.6 에도).
+
+**구현**: ① move 짧은(조사없는 "강남 가")·단독 방향("왼쪽")·세이프존 단독·equip 표현
+("갈아입자"·"장비") 보강 ② **capacity↑(d_model 192→256)** 로 자모 강건성 근본 안정화.
+
+**결과**: move/equip 8/9(종합↑), phonetic 안정 통과. exact 0.981, pytest 23/23, dart 7/7.
+("뒤로"=방향 모호는 fallback 허용.)
+
+**다음(iter 30 후보)**: ① 다중동작 LCM 직접 ② 더 다양한 holdout ③ 라리엔 lib 통합(차단지점).
 
 ### iter 28 (2026-06-22) — 맥락 지시어 fallback + monsters pos_weight(근본 안정)
 **자아비판**: 맥락 의존("그것도 착용"→auto_combat 오류·"거기서 사냥"→hunt). + monsters TP
