@@ -82,7 +82,7 @@ def multihead_loss(logits: dict, labels: dict, head_specs) -> torch.Tensor:
             # positive 신호가 약해 일부 archetype 이 false negative(누락)된다. pos_weight 로
             # positive 손실을 직접 키워 불균형을 보정한다(가중 곱셈보다 정공법).
             if name == "monsters":
-                pw = logits[name].new_full((logits[name].shape[-1],), 8.0)
+                pw = logits[name].new_full((logits[name].shape[-1],), 6.0)
                 total = total + bce(logits[name], labels[name], pos_weight=pw)
             else:
                 total = total + bce(logits[name], labels[name])

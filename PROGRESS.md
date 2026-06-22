@@ -10,14 +10,27 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 30
-- 모델 d_model 256·seed 고정. **exact 0.985**, 홀드아웃 0.97.
-- **다중동작 직접**("강철 입고 사냥"→[equip,hunt], "물약 먹고 사냥"→[potion,hunt]). 강건성 다층.
-- 라우팅: 명령류·다중동작→sml / 복합위치·상대·부정·맥락→fallback. monsters pos_weight 안정.
-- pytest **24/24** + dart **7/7**(classifier 분할 포함). 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 32
+- 모델 d_model 256·seed·monsters pos_weight 6. **exact 0.987**(최고), 홀드아웃 0.97.
+- 단일/다중(2~3 action)/존댓말/은어/한글숫자/구어/단독 표현 모두 sml. monsters FP 0·TP 안정.
+- 라우팅: 명령류→sml / 복합위치·상대·부정·맥락→fallback. 강건성 다층(공백·자모·edge).
+- pytest **24/24** + dart **7/7**. 완료조건 1·2·3·4 ✅.
 
 
 ## Iteration 로그
+
+### iter 32 (2026-06-22) — potion/move 단독 + monster spurious FP 근본 차단
+**자아비판**: 종합 평가(24발화) 0.88 — "물약 먹어"·"연습장으로"(단독)·"물약 먹고 X"(연관)
+fallback. + monster FP("강남 60% 사냥"→Skeleton spurious — threshold 로도 안 잡힘).
+
+**구현**: ① potion 단독("물약 먹어")·move 조사 단독("연습장으로") 보강 ② **monster spurious
+근본 차단** — monster 없는 retreat 케이스를 *전체 hp(10~90)* 충분히 학습("hp≠monster" 각인)
++ monster+retreat 케이스 축소(상관 분산) + pos_weight 8→6.
+
+**결과**: "물약 먹어"·"연습장으로"·"물약 먹고 X"→정상, monster FP 0(spurious 차단)+TP 유지.
+exact 0.987(최고), pytest 24/24, dart 7/7.
+
+**다음(iter 33 후보)**: ① 더 다양한 holdout ② 라리엔 lib 통합(차단지점) ③ 영어 명령 다양성.
 
 ### iter 31 (2026-06-22) — 3+ action 재귀 분할(학습 없이)
 **자아비판**: 다중동작이 2개까지만. "물약 먹고 강철 입고 사냥"(3-action)→fallback.

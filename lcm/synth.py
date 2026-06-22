@@ -117,10 +117,11 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
             if any("가" <= c <= "힣" for c in al):  # 한글 별칭
                 for v in rng.sample(move_verbs, k=4):
                     out.append((f"{_ko_obj(al)} {v}".strip(), intent))
-                # 조사 없는 짧은 표현("강남 가"·"강북 이동").
+                # 조사 없는 짧은 표현("강남 가"·"강북 이동") + 조사 단독("강남으로").
                 out.append((f"{al} 가", intent))
                 out.append((f"{al} 이동", intent))
                 out.append((f"{al} 가자", intent))
+                out.append((f"{_ko_obj(al)}", intent))   # "강남으로"·"연습장으로" 단독
                 # 지시어 prefix("저기/거기 X로 가").
                 for pre in rng.sample(["저기", "거기", "그", "일단"], k=2):
                     out.append((f"{pre} {al}로 가", intent))
@@ -195,28 +196,24 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
         m2 = rng.sample(archs, k=2)
         out.append((f"{al}에서 {m2[0]}랑 {m2[1]} 사냥",
                     {"action": "hunt", "location": lm["id"], "monsters": m2}))
-        # HP % 전 범위(10~90) 학습. mon 을 hp 마다 *다르게* 골라 "location+hp→특정 mon"
-        # spurious correlation 을 깬다(과거 "강남 60%"→Mecha false positive 원인).
-        for hp in rng.sample([10, 20, 30, 40, 50, 60, 70, 80, 90], k=3):
+        # monster + retreat (소수 — mon 을 hp 마다 다르게 골라 location+hp→mon 상관 분산).
+        for hp in rng.sample([10, 30, 50, 70, 90], k=2):
             mon = rng.choice(archs)
             out.append((f"{al}에서 {mon} 사냥하고 체력 {hp}% 아래면 안전지대로 피신",
                         {"action": "hunt", "location": lm["id"], "monsters": [mon],
                          "retreatToSafeZone": True, "retreatHpPct": hp}))
-            # monster 없는 hp 케이스(monsters 빈 것도 충분히 — false positive 억제).
-            out.append((f"{al}에서 사냥하고 체력 {hp}%면 안전지대로",
-                        {"action": "hunt", "location": lm["id"],
-                         "retreatToSafeZone": True, "retreatHpPct": hp}))
-            out.append((f"{al}에서 사냥하고 체력 {hp}% 아래면 피신",
-                        {"action": "hunt", "location": lm["id"],
-                         "retreatToSafeZone": True, "retreatHpPct": hp}))
-            # 한글 숫자(STT 가 "삼십 퍼센트" 로 전사할 수 있음).
+        # monster 없는 retreat — *전체 hp*(10~90) 충분히 학습해 "hp≠monster" 를 각인,
+        # "강남 60% 사냥"→특정 monster false positive(spurious)를 근본 차단.
+        for hp in [10, 20, 30, 40, 50, 60, 70, 80, 90]:
+            base = {"action": "hunt", "location": lm["id"],
+                    "retreatToSafeZone": True, "retreatHpPct": hp}
+            out.append((f"{al}에서 사냥하고 체력 {hp}%면 안전지대로", base))
+            out.append((f"{al}에서 사냥하고 체력 {hp}% 아래면 피신", base))
             ko = _KO_NUM[hp]
-            r2 = {"action": "hunt", "location": lm["id"], "retreatToSafeZone": True,
-                  "retreatHpPct": hp}
-            out.append((f"{al}에서 사냥하고 체력 {ko} 퍼센트면 안전지대로", r2))
-            out.append((f"{al}에서 사냥하고 체력 {ko}프로면 피신", r2))
-            if hp == 50:  # "절반" = 50%
-                out.append((f"{al}에서 사냥하고 체력 절반이면 안전지대로", r2))
+            out.append((f"{al}에서 사냥하고 체력 {ko} 퍼센트면 안전지대로", base))
+            out.append((f"{al}에서 사냥하고 체력 {ko}프로면 피신", base))
+            if hp == 50:
+                out.append((f"{al}에서 사냥하고 체력 절반이면 안전지대로", base))
     # 모든 archetype 균등 학습 — monsters(multi-label) TP 가 학습 비결정성에 흔들리지 않게
     # 32종 각각 충분한 hunt 예시 보장(과거 일부 archetype false negative 반복).
     for arch in archs:
@@ -259,9 +256,11 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"{w} {v}".strip(), {"action": "potion", "potion": pid}))
     for w in fp["potionHp"]:  # "물약"의 기본 = hp(fast-path 와 동일 학습).
         out.append((w, {"action": "potion", "potion": "hp"}))
-    # HP 회복 구어("회복 좀 하자"·"체력 좀 채워").
+    # HP 회복 구어 + 단독("물약 먹어"·"회복 좀 하자").
     for w in ["회복 좀 하자", "체력 좀 채워", "체력 채워줘", "회복하자", "힐 좀 줘",
-              "힐포션 좀", "피 좀 채워", "체력 회복", "회복 좀 시켜줘"]:
+              "힐포션 좀", "피 좀 채워", "체력 회복", "회복 좀 시켜줘",
+              "물약 먹어", "물약 먹어줘", "물약 좀 먹어", "물약 마셔", "물약 마셔줘",
+              "hp 물약 먹어", "체력 물약 먹어", "회복 물약 먹어", "물약 좀"]:
         out.append((w, {"action": "potion", "potion": "hp"}))
     # open_menu — fast-path 별칭 + "{메뉴} 열어/보여줘/띄워".
     menu_ko = {"menu": ["메뉴", "메인 메뉴"], "chat": ["챗봇", "도우미", "라리아"],
