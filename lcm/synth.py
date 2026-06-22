@@ -318,6 +318,21 @@ def _gen_simple(ssot, rng) -> list[tuple[str, dict]]:
     for t in ("물약 자동 꺼", "물약 자동 사용 꺼", "자동 물약 끄기", "물약 오토 꺼",
               "모든 물약 자동 꺼", "자동 물약 중지"):
         out.append((t, {"action": "auto_potion", "potions": ["all"], "enable": False}))
+    # 영어 명령(한/영 우선 — 영어 발화 다양성).
+    for t in ["drink hp potion", "use potion", "take potion", "drink potion", "use hp potion",
+              "heal", "heal me", "drink heal potion"]:
+        out.append((t, {"action": "potion", "potion": "hp"}))
+    for t in ["halt", "stop now", "stop it", "freeze", "hold on", "stop moving", "stop please"]:
+        out.append((t, {"action": "stop"}))
+    for t, tgt in [("open menu", "menu"), ("open inventory", "inventory"),
+                   ("open chat", "groupchat"), ("open settings", "sound"),
+                   ("show inventory", "inventory"), ("open the menu", "menu"),
+                   ("open potion menu", "potion")]:
+        out.append((t, {"action": "open_menu", "target": tgt}))
+    for t in ["auto hunt on", "turn on auto hunt", "enable auto hunt", "start auto hunt"]:
+        out.append((t, {"action": "auto_combat", "mode": "auto_hunt"}))
+    for t in ["auto hunt off", "turn off auto hunt", "stop auto hunt"]:
+        out.append((t, {"action": "auto_combat", "mode": "off"}))
     # unknown(잡담·게임 질문 — CF explain/chat 폴백 대상).
     for w in _UNKNOWN:
         out.append((w, {"action": "unknown"}))

@@ -19,6 +19,18 @@ git history를 참조해 이어간다.
 
 ## Iteration 로그
 
+### iter 33 (2026-06-22) — 영어 명령 다양성(한/영 우선)
+**자아비판**: 사용자 "한/영 우선"인데 영어 명령 다양성 미측정 — 0.60("drink potion"·"halt"·
+"open inventory"→move 오류).
+
+**구현**: 영어 명령(potion drink/use·stop halt·open_menu open X·auto hunt on/off) 보강.
+test_english_commands(≥0.85) 가드.
+
+**결과**: 영어 명령 정상화. exact 0.989(최고), pytest 25/25, dart 7/7.
+
+**다음(iter 34)**: 🔴 한국어 monster alias(다른 팀 #3 — "캐스터"·"해골"·"뼈" 전부 실패, 실사용
+치명적).
+
 ### iter 32 (2026-06-22) — potion/move 단독 + monster spurious FP 근본 차단
 **자아비판**: 종합 평가(24발화) 0.88 — "물약 먹어"·"연습장으로"(단독)·"물약 먹고 X"(연관)
 fallback. + monster FP("강남 60% 사냥"→Skeleton spurious — threshold 로도 안 잡힘).

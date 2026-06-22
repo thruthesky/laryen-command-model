@@ -156,6 +156,17 @@ def test_location_routing(rt):
     assert len(bad) <= 2, f"복합/상대 위치인데 sml(자신있게 틀림): {bad}"
 
 
+def test_english_commands(rt):
+    """영어 명령(한/영 우선)의 action 정확도(≥0.85)."""
+    cases = [("drink hp potion", "potion"), ("use potion", "potion"), ("halt", "stop"),
+             ("open inventory", "open_menu"), ("open menu", "open_menu"),
+             ("hunt at gangnam", "hunt"), ("go to safe zone", "move"),
+             ("auto hunt on", "auto_combat"), ("equip plate set", "equip")]
+    ok = sum(1 for t, w in cases if (r := rt.classify(t))["layer"] == "sml"
+             and r["command"]["actions"][0]["action"] == w)
+    assert ok >= len(cases) * 0.85, f"영어 명령 {ok}/{len(cases)}"
+
+
 def test_holdout_command_generalization(rt):
     """train 에 없는 다양한 실사용 명령 표현의 action 정확도(일반화 ≥0.8)."""
     H = [("강남 데려가", "move"), ("저기 강북으로", "move"), ("관악산 가자고", "move"),
