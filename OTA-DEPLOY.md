@@ -22,7 +22,7 @@ LCM(`lcm.int8.onnx`)을 **Flutter 빌드에 임베드하지 않고**, 앱 실행
 | fallback | bundled 1개 | bundled + **직전 정상(N-1) 롤백** | **bundled + N-1 캐시 롤백**(B 강화) |
 | 강제 무효화 | (없음) | `min_lcm_version`(구 모델 sunset) | **`min_lcm_version` 채택**(B) — 보안/치명 버그 모델 차단 |
 | 릴리스 채널 | (없음) | `channel: stable` | **채택**(B) — 라리엔 staging/production 분리와 정합 |
-| 자산 원자성 | head_specs 출력 매핑 어긋남 = silent wrong dispatch 경고 | labels_url 분리 배포 | **labels.json 원자 세트 + 경고**(A 근거 + B 형태) |
+| 자산 원자성 | head_specs 출력 매핑 어긋남 = silent wrong dispatch 경고 | labels_url 분리 배포 | **lcm-labels.json 원자 세트 + 경고**(A 근거 + B 형태) |
 | 선례 | fast_path version·sherpa 다운로드 코드 인용 | (일반론) | **라리엔 기존 코드 재사용**(A) (§5) |
 
 차이는 **상충이 아니라 상호 보완**이다. 통합본이 두 분석의 상위집합이다.
@@ -63,10 +63,10 @@ lcm:
   files:
     model:     { url: ".../lcm-v1.2.3/lcm.int8.onnx", sha256: "…", bytes: 663000 }
     tokenizer: { url: ".../lcm-v1.2.3/tokenizer.json", sha256: "…" }  # vocab+merges 묶음
-    labels:    { url: ".../lcm-v1.2.3/labels.json",    sha256: "…" }  # labels+head_specs+threshold+pad_len
+    labels:    { url: ".../lcm-v1.2.3/lcm-labels.json",    sha256: "…" }  # labels+head_specs+threshold+pad_len
 ```
 
-> `labels.json` = 현재 [artifacts/golden_tokenize.json](artifacts/golden_tokenize.json) 의
+> `lcm-labels.json` = 현재 [artifacts/golden_tokenize.json](artifacts/golden_tokenize.json) 의
 > `labels` / `head_specs` / `threshold` / `pad_len` 키를 떼어낸 것. **이 4개가 모델과 한 세트.**
 
 ### 두 호환 축(혼동 금지)
@@ -129,7 +129,7 @@ CF 폴백(절대 silent fail 아님).
 | fast_path version 비교 stale-while-revalidate | [lib/services/voice/voice_fast_path.dart](../lib/services/voice/voice_fast_path.dart) | `_apply`(더 높은 version 만)·캐시 로드·String.fromEnvironment URL |
 | 큰 onnx 다운로드+크기검증+문서디렉토리 캐시 | [lib/services/voice/sherpa_stt.dart](../lib/services/voice/sherpa_stt.dart) | `_ensureFile`(url→dest, .partial, 진행률) — sha256 추가 |
 | 클라 버전 게이트(major*1000+minor) | `kClientCompat`(GAME-SERVER.md §버전 게이트) | `min_app_version`/`schema_version` 판정 패턴 |
-| 런타임 labels/headSpecs 주입 | [dart/lib/lcm_classifier.dart](dart/lib/lcm_classifier.dart) `LcmClassifier(labels:, headSpecs:, infer:)` | **OTA 로 받은 labels.json 을 그대로 주입**(이미 설계됨) |
+| 런타임 labels/headSpecs 주입 | [dart/lib/lcm_classifier.dart](dart/lib/lcm_classifier.dart) `LcmClassifier(labels:, headSpecs:, infer:)` | **OTA 로 받은 lcm-labels.json 을 그대로 주입**(이미 설계됨) |
 
 → `LcmClassifier` 가 이미 labels/headSpecs 를 생성자 주입받으므로, **OTA 자산을 꽂는 데 분류기
 코드 변경이 거의 없다.** 다운로드 계층만 새로 만든다.
@@ -164,16 +164,36 @@ python -m lcm.export_onnx          # ④ int8 onnx 출력
 
 | 단계 | 작업 | 자율/차단 |
 |---|---|---|
-| S1 | `labels.json` 분리 export(`export_golden.py` 확장: golden 에서 labels/head_specs/threshold/pad_len 추출) | ✅ AI 자율(LCM repo 내) |
+| S1 | `lcm-labels.json` 분리 export(`export_golden.py` 확장: golden 에서 labels/head_specs/threshold/pad_len 추출) | ✅ AI 자율(LCM repo 내) |
 | S2 | manifest.json 생성 스크립트(version/schema_version/sha256/min_* 채움) | ✅ AI 자율 |
-| S3 | **onnxruntime Dart 바인딩 도입**(`InferFn` 채우기) | 🛑 **차단지점** — 비공식 패키지(CLAUDE.md §Flame 공식 최우선). 사용자 승인 필요 |
+| S3 | **LCM 추론 통로 확보**(`InferFn` 채우기) — sherpa 재사용 불가 확정(아래 §7.1) | 🛑 **차단지점** — 옵션 A(비공식 `onnxruntime` 패키지) 또는 B(동봉 dylib 자체 FFI). CLAUDE.md §Flame 공식 최우선 → 사용자 승인 필요 |
 | S4 | lib/ OTA 다운로드 계층(`lcm_ota.dart`: manifest fetch·게이트·sha256·N-1 캐시·`LcmClassifier` 주입) | 🛑 **차단지점** — lib 변경 + flutter 빌드 + **DTD 시각 검증 의무** |
 | S5 | `voice_command_sheet.dart` fast-path 실패 경로에 LCM 2차 삽입, 실패 시 기존 CF 폴백 | 🛑 차단지점(S4 동반) |
 | S6 | 모델·자산·manifest 를 `laryen.com/models/lcm/` 업로드(stale-while-revalidate) | ✅ staging 자율 / production 사람 |
 | S7 | CI 가드: `sync_ssot.py --check` 를 pre-push hook(F-046 verify.sh)에 합류 | ✅ AI 자율 |
 
-**핵심 차단지점 = S3(비공식 onnxruntime 패키지 도입)**. 이것만 사용자가 승인하면 S4~S5 가
-열린다. (sherpa_onnx 가 ORT 세션을 재노출하면 추가 패키지 0일 수 있어 우선 조사 가능.)
+**핵심 차단지점 = S3(LCM 추론 통로)**. 이것만 사용자가 승인하면 S4~S5 가 열린다.
+
+### 7.1 sherpa_onnx ORT 세션 재사용 조사 결과 (2026-06-22, 소스 직접 확인)
+
+INTEGRATION.md 의 *"sherpa 가 ORT 세션을 재노출하면 추가 패키지 0"* 가정은 **반증됨**.
+`sherpa_onnx-1.13.3` 패키지 소스(`~/.pub-cache/.../sherpa_onnx-1.13.3`)를 직접 조사:
+
+| 확인 | 결과 | 결론 |
+|---|---|---|
+| FFI 가 ONNX Runtime 범용 C API(`OrtCreateSession`/`OrtRun`/`OrtValue`) 노출? | **0건** | sherpa Dart 로 임의 onnx 추론 불가 |
+| 노출 C 심볼 | `SherpaOnnx*` **316개 전부** (STT·TTS·VAD·화자식별 등 음성 전용) | 운전대가 음성 전용 |
+| 공개 export | offline/online_recognizer·tts·vad·audio_tagging — 범용 추론 클래스 없음 | 동일 |
+| 네이티브 lib | **`libonnxruntime.1.24.4.dylib` 동봉됨** | 엔진(ORT)은 앱에 이미 존재 |
+
+→ **엔진은 이미 앱에 있으나(네이티브 무게 0 추가 가능), sherpa 의 Dart API 로는 못 꺼낸다.**
+S3 선택지는 둘로 좁혀짐:
+- **옵션 A** — pub.dev `onnxruntime` Dart 패키지 도입. 가장 간단하나 **비공식 패키지 승인 필요**,
+  libonnxruntime 중복 동봉 가능성.
+- **옵션 B** — 동봉된 `libonnxruntime.dylib` 에 자체 `dart:ffi` 바인딩 작성. 네이티브 무게 0·비공식
+  패키지 회피하나 **ORT C API 바인딩을 직접 구현**(큰 작업, 사실상 패키지 재구현).
+
+"추가 작업 없는 공짜 재사용"은 **불가능**. 현실적 1순위 = 옵션 A(승인), 의존 회피 시 = 옵션 B(고비용).
 
 ---
 

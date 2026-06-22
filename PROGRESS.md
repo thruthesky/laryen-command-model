@@ -10,14 +10,26 @@ git history를 참조해 이어간다.
 4. 다양한 입력 → 응답 → 검증 → 훈련 반복 → 정확도 향상
 5. 1~4를 ≥100회 반복
 
-## 현재 상태(메트릭) — iter 32
-- 모델 d_model 256·seed·monsters pos_weight 6. **exact 0.987**(최고), 홀드아웃 0.97.
-- 단일/다중(2~3 action)/존댓말/은어/한글숫자/구어/단독 표현 모두 sml. monsters FP 0·TP 안정.
-- 라우팅: 명령류→sml / 복합위치·상대·부정·맥락→fallback. 강건성 다층(공백·자모·edge).
-- pytest **24/24** + dart **7/7**. 완료조건 1·2·3·4 ✅.
+## 현재 상태(메트릭) — iter 34 (모델 확정·Ralph 학습 종료)
+- 모델 d_model 256·seed. **exact 0.969**(best), 한국어 monster alias(캐스터/해골/뼈/흡혈귀).
+- 단일/다중(2~3 action)/존댓말/은어/한글숫자/구어/영어/단독 모두 sml. 강건성 다층.
+- pytest **26/26** + dart **7/7**. 배포 산출물: lcm.int8.onnx 2.4M + lcm-labels.json + tokenizer.
+- **다음=Flutter 통합(flutter_onnxruntime)·서버 배포·동적 다운로드**(사용자 지시 2026-06-22).
 
 
 ## Iteration 로그
+
+### iter 34 (2026-06-22) — 한국어 monster alias + 모델 확정(Ralph 학습 종료)
+**사용자 지시**: 모델 학습 현재 상태로 종료(차후 run_all.sh 재학습) → Flutter 통합 → 서버 배포.
+
+**구현**: ① 한국어 monster alias 32종(`_MONSTER_KO` — 캐스터/해골/뼈/흡혈귀/악마/팔라딘 등,
+다른 팀 #3) — hunt 입력은 한국어/wire 무작위, intent 는 wire name 정규화. ② 배포용 라벨
+사전 분리 export(`lcm-labels.json` — 다른 팀 S1). ③ ep139 에서 학습 종료(best exact 0.969).
+
+**결과**: "캐스터"→Caster·"해골"→Skeleton·"뼈"→Bone·"흡혈귀"→Vampire. pytest 26/26, dart 7/7.
+배포 산출물 완비(int8 2.4M·labels·tokenizer). Ralph 학습 루프 종료, Flutter 통합으로 전환.
+
+**다음**: B 서버 배포 → C flutter_onnxruntime lib 통합 → D DTD 검증.
 
 ### iter 33 (2026-06-22) — 영어 명령 다양성(한/영 우선)
 **자아비판**: 사용자 "한/영 우선"인데 영어 명령 다양성 미측정 — 0.60("drink potion"·"halt"·

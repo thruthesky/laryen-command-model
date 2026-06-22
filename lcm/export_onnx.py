@@ -93,6 +93,17 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"⚠️ int8 양자화 건너뜀: {e}")
 
+    # 배포용 라벨 사전(OTA — onnx 와 함께 배포). 라리엔 클라가 헤드 인덱스→이름 디코드에 사용.
+    import json
+    labels_out = {
+        "labels": {n: lab for n, _, lab in ls.heads()},
+        "head_specs": [{"name": n, "kind": k} for n, k, _ in ls.heads()],
+        "threshold": 0.8, "pad_len": PAD_LEN, "pad_id": c["pad_id"],
+    }
+    (ROOT / "artifacts" / "lcm-labels.json").write_text(
+        json.dumps(labels_out, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"✅ 라벨 사전 → artifacts/lcm-labels.json ({len(labels_out['labels'])} 헤드)")
+
     # ── (3) onnxruntime 검증 — 두 산출물 모두 PyTorch 와 일치(고정 PAD_LEN 패딩) ──
     def encode_fixed(text: str):
         raw = tk.encode(text).ids[:PAD_LEN]
