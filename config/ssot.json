@@ -449,6 +449,42 @@
       "monsterHint": "Mira, Hellion"
     },
     {
+      "id": "gangnam_station_exit_6",
+      "ko": "강남역 6번 출구",
+      "kind": "waypoint",
+      "x": 3761.0,
+      "y": -1813.0,
+      "aliases": [
+        "강남역 6번 출구",
+        "강남역 6번출구",
+        "강남역6번출구",
+        "6번 출구",
+        "6번출구",
+        "gangnam station exit 6",
+        "station exit 6",
+        "exit 6"
+      ],
+      "monsterHint": ""
+    },
+    {
+      "id": "gangnam_station_exit_7",
+      "ko": "강남역 7번 출구",
+      "kind": "waypoint",
+      "x": 4577.0,
+      "y": -1457.0,
+      "aliases": [
+        "강남역 7번 출구",
+        "강남역 7번출구",
+        "강남역7번출구",
+        "7번 출구",
+        "7번출구",
+        "gangnam station exit 7",
+        "station exit 7",
+        "exit 7"
+      ],
+      "monsterHint": ""
+    },
+    {
       "id": "gangdong",
       "ko": "강동",
       "kind": "hunt",
@@ -549,6 +585,8 @@
     "gangnam_garosoo",
     "gangnam_station",
     "gangnam_apgujeong",
+    "gangnam_station_exit_6",
+    "gangnam_station_exit_7",
     "gangdong",
     "gangbuk",
     "gangnam",
@@ -629,7 +667,8 @@
     "inventory",
     "potion",
     "sound",
-    "autocombat"
+    "autocombat",
+    "debug"
   ],
   "direction_buckets": [
     0.0,
@@ -732,6 +771,17 @@
         "자동전투설정",
         "자동사냥설정",
         "전투설정"
+      ],
+      "debug": [
+        "디버그",
+        "디버그패널",
+        "디버그켜",
+        "디버그꺼",
+        "디버그패널켜",
+        "디버그패널꺼",
+        "debug",
+        "debugpanel",
+        "fps"
       ]
     }
   }

@@ -42,6 +42,7 @@ UNEQUIP_SLOTS = ["weapon", "armor", "accessory"]      # unequip 'slot'
 COMBAT_MODES = ["off", "magnetic", "auto_hunt"]       # auto_combat 'mode'
 MENU_TARGETS = [                                       # open_menu 'target' valid set
     "menu", "chat", "groupchat", "inventory", "potion", "sound", "autocombat",
+    "debug",                                           # 디버그 패널 토글(음성 "디버그 꺼")
 ]
 # 방향 이동(move 'direction') — 화면 시계각도 16버킷(0,22.5,...). 분류 헤드용.
 DIRECTION_BUCKETS = [round(i * 22.5, 1) for i in range(16)]
@@ -74,7 +75,12 @@ def parse_landmarks(text: str) -> list[dict]:
         al_m = re.search(r"aliases:\s*\[(.*?)\]", chunk, re.S)
         aliases = re.findall(r"'([^']*)'", al_m.group(1)) if al_m else []
         hint_m = re.search(r"monsterHint:\s*'([^']*)'", chunk)
-        kind = "safe" if re.search(r"LandmarkKind\.safe", chunk) else "hunt"
+        if re.search(r"LandmarkKind\.waypoint", chunk):
+            kind = "waypoint"   # 이동 지점(역 출구 등) — 사냥 발화 생성 제외(_gen_hunt)
+        elif re.search(r"LandmarkKind\.safe", chunk):
+            kind = "safe"
+        else:
+            kind = "hunt"
         out.append({
             "id": id_m.group(1),
             "ko": ko_m.group(1) if ko_m else id_m.group(1),
