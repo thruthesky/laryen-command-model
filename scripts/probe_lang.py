@@ -79,6 +79,21 @@ EN = [
     ("show fps", "open_menu", "target", "debug"),
     ("toggle debug", "open_menu", "target", "debug"),
 ]
+NOISE = [
+    ("멈처", "stop", None, None),
+    ("피 채어줘", "potion", "potion", "hp"),
+    ("자동 산양 켜줘", "auto_combat", "mode", "auto_hunt"),
+    ("오토 헌트 꺼조", "auto_combat", "mode", "off"),
+    ("강남가로수길로 이동", "move", "location", "gangnam_garosoo"),
+    ("강남 가서 사냥 좀 해줘", "hunt", "location", "gangnam"),
+    ("케스터 사냥", "hunt", "monsters", "Caster"),
+    ("opn inventory", "open_menu", "target", "inventory"),
+    ("open inventry", "open_menu", "target", "inventory"),
+    ("open chatt", "open_menu", "target", "groupchat"),
+    ("turn off auto hant", "auto_combat", "mode", "off"),
+    ("go to gangnum", "move", "location", "gangnam"),
+    ("hunt castars", "hunt", "monsters", "Caster"),
+]
 # fallback 으로 가야 정상(QnA/잡담)인 것 — 영어 포함.
 FALLBACK = [
     ("강남 뭐가 좋아", True), ("what monster is here", True),
@@ -125,10 +140,13 @@ def main():
     print("=== LCM 영어/한국어 게임 컨트롤 깊이 테스트 (현재 lcm.pt) ===")
     ko_ok, ko_n = run(rt, KO, "한국어 게임컨트롤")
     en_ok, en_n = run(rt, EN, "영어 게임컨트롤")
+    noise_ok, noise_n = run(rt, NOISE, "STT/철자 흔들림")
     fb_ok, fb_n = run_fb(rt, FALLBACK)
-    tot_ok, tot_n = ko_ok + en_ok + fb_ok, ko_n + en_n + fb_n
+    tot_ok = ko_ok + en_ok + noise_ok + fb_ok
+    tot_n = ko_n + en_n + noise_n + fb_n
     print(f"\n=== 종합 {tot_ok}/{tot_n} = {tot_ok/tot_n*100:.0f}% "
-          f"(한 {ko_ok}/{ko_n} · 영 {en_ok}/{en_n} · fb {fb_ok}/{fb_n}) ===")
+          f"(한 {ko_ok}/{ko_n} · 영 {en_ok}/{en_n} · "
+          f"noise {noise_ok}/{noise_n} · fb {fb_ok}/{fb_n}) ===")
 
 
 if __name__ == "__main__":

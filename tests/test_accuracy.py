@@ -119,6 +119,47 @@ def test_phonetic_robustness(rt):
     assert rate >= 0.75, f"유사발음 안전(정답+fallback) {rate:.2f} < 0.75(틀린 sml 과다)"
 
 
+def test_semantic_typo_robustness(rt):
+    """의미가 분명한 STT/철자 흔들림은 LCM 이 로컬 명령으로 처리해야 한다."""
+    cases = [
+        ("멈처", "stop", None, None),
+        ("피 채어줘", "potion", "potion", "hp"),
+        ("자동 산양 켜줘", "auto_combat", "mode", "auto_hunt"),
+        ("오토 헌트 꺼조", "auto_combat", "mode", "off"),
+        ("강남 가로수길로 이동", "move", "location", "gangnam_garosoo"),
+        ("강남가로수길로 이동", "move", "location", "gangnam_garosoo"),
+        ("강남 가서 사냥 좀 해줘", "hunt", "location", "gangnam"),
+        ("케스터 사냥", "hunt", "monsters", "Caster"),
+        ("opn inventory", "open_menu", "target", "inventory"),
+        ("open inventry", "open_menu", "target", "inventory"),
+        ("open chatt", "open_menu", "target", "groupchat"),
+        ("turn off auto hant", "auto_combat", "mode", "off"),
+        ("go to gangnum", "move", "location", "gangnam"),
+        ("hunt castars", "hunt", "monsters", "Caster"),
+    ]
+    ok = 0
+    wrong = []
+    for text, action, key, val in cases:
+        r = rt.classify(text)
+        if r["layer"] != "sml":
+            wrong.append((text, "fallback", action, key, val))
+            continue
+        a0 = r["command"]["actions"][0]
+        if a0.get("action") != action:
+            wrong.append((text, a0, action, key, val))
+            continue
+        if key is None:
+            ok += 1
+        elif key == "monsters" and val in (a0.get("monsters") or []):
+            ok += 1
+        elif str(a0.get(key)) == str(val):
+            ok += 1
+        else:
+            wrong.append((text, a0, action, key, val))
+    rate = ok / len(cases)
+    assert rate >= 0.85, f"의미형 오타/STT 강건성 {rate:.2f} < 0.85 — 오답: {wrong}"
+
+
 def test_edge_cases_safe(rt):
     """이상 입력(빈·구두점·이모지·초장문)에 crash 없고, 의미 문자 없으면 fallback."""
     for t in ["", " ", "   ", "!!!", "...", "?????", "😀😀", "@#$%^", "\n\t"]:
@@ -165,6 +206,27 @@ def test_english_commands(rt):
     ok = sum(1 for t, w in cases if (r := rt.classify(t))["layer"] == "sml"
              and r["command"]["actions"][0]["action"] == w)
     assert ok >= len(cases) * 0.85, f"영어 명령 {ok}/{len(cases)}"
+
+
+def test_english_slots(rt):
+    """영어 명령은 action 뿐 아니라 menu/mode/location 슬롯도 맞아야 한다."""
+    cases = [
+        ("open inventory", "open_menu", "target", "inventory"),
+        ("open chat", "open_menu", "target", "groupchat"),
+        ("turn off auto hunt", "auto_combat", "mode", "off"),
+        ("go to gangnam", "move", "location", "gangnam"),
+        ("go to safe zone", "move", "location", "safe"),
+    ]
+    wrong = []
+    for text, action, key, val in cases:
+        r = rt.classify(text)
+        if r["layer"] != "sml":
+            wrong.append((text, "fallback", action, key, val))
+            continue
+        a0 = r["command"]["actions"][0]
+        if a0.get("action") != action or str(a0.get(key)) != str(val):
+            wrong.append((text, a0, action, key, val))
+    assert not wrong, f"영어 slot 오답: {wrong}"
 
 
 def test_holdout_command_generalization(rt):

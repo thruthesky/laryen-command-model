@@ -38,7 +38,7 @@ _POTION_WORDS = {
 # 입력은 한국어 alias 도 받되, intent monsters 는 항상 wire name 으로 정규화한다.
 # 추후 라리엔 SSOT(fast_path·CF prompt 공유)로 승격 예정.
 _MONSTER_KO = {
-    "Brute": ["브루트"], "Caster": ["캐스터", "캐스타"], "Skirmisher": ["스커미셔"],
+    "Brute": ["브루트"], "Caster": ["캐스터", "캐스타", "케스터", "캐스 터"], "Skirmisher": ["스커미셔"],
     "Coward": ["코워드", "겁쟁이"], "PackHunter": ["팩헌터"], "Guardian": ["가디언"],
     "Ambusher": ["앰부셔"], "Trickster": ["트릭스터"], "Bone": ["본", "뼈"],
     "Demonic": ["데모닉", "악마"], "Paladin": ["팔라딘", "성기사"],
@@ -139,7 +139,8 @@ def _gen_move(ssot, rng) -> list[tuple[str, dict]]:
     for lm in ssot["landmarks"]:
         intent = {"action": "move", "location": lm["id"]}
         # 한국어 별칭 + 영문 별칭 모두 활용.
-        for al in lm["aliases"]:
+        names = list(dict.fromkeys([lm["ko"], *lm["aliases"]]))
+        for al in names:
             if any("가" <= c <= "힣" for c in al):  # 한글 별칭
                 for v in rng.sample(move_verbs, k=4):
                     out.append((f"{_ko_obj(al)} {v}".strip(), intent))
@@ -195,7 +196,8 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
     hunt_verbs = ["사냥", "사냥해", "사냥해줘", "사냥하자", "에서 사냥", "에서 잡아"]
     for lm in hunts:
         loc = {"action": "hunt", "location": lm["id"]}
-        for al in lm["aliases"][:4]:
+        names = list(dict.fromkeys([lm["ko"], *lm["aliases"]]))
+        for al in names[:6]:
             if any("가" <= c <= "힣" for c in al):
                 out.append((f"{al}에서 사냥", loc))
                 out.append((f"{al}에서 사냥해줘", loc))
@@ -203,6 +205,9 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
                 # 구어체/도치(실사용 발화).
                 out.append((f"사냥하자 {al}에서", loc))
                 out.append((f"{al} 가서 사냥", loc))
+                out.append((f"{al} 가서 사냥해줘", loc))
+                out.append((f"{al} 가서 사냥 좀 해줘", loc))
+                out.append((f"{al}가서 사냥 좀 해줘", loc))
                 out.append((f"{al} 가서 사냥하자", loc))
                 out.append((f"{al} 가서 몹 잡아", loc))
                 out.append((f"사냥 좀 하러 가자 {al}", loc))
@@ -212,7 +217,7 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
                 out.append((f"{al}으로 사냥 가줄래", loc))
             else:
                 out.append((f"hunt at {al}", loc))
-        al = rng.choice([a for a in lm["aliases"] if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
+        al = rng.choice([a for a in names if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
         # monster 포함 hunt — *한국어 alias/wire 무작위* 입력, intent 는 wire name.
         # k=6(↑4): monster-only 보강이 location+monster TP 를 희석한 회귀(2026-06-22
         #   test_monsters_true_positive 3/6) 대응 — location+monster 표본을 늘려 균형.
@@ -249,7 +254,8 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
         for _ in range(9):  # archetype 당 충분(↑5→9: monster-only 보강 후 location+monster
             #   TP 안정 — 약/혼동 방지. test_monsters_true_positive 회귀 대응 2026-06-22)
             lm = rng.choice(hunts)
-            al = rng.choice([a for a in lm["aliases"]
+            names = list(dict.fromkeys([lm["ko"], *lm["aliases"]]))
+            al = rng.choice([a for a in names
                              if any("가" <= c <= "힣" for c in a)] or [lm["ko"]])
             nm = _mon_name(arch, rng)  # 한국어 alias/wire 무작위
             for v in ("잡아", "사냥해", "처치해", "사냥해줘", "잡자"):
@@ -273,6 +279,70 @@ def _gen_hunt(ssot, rng) -> list[tuple[str, dict]]:
             for tmpl in (f"hunt {en}", f"kill {en}", f"go hunt {en}", f"hunt the {en}",
                          f"attack {en}", f"fight {en}"):
                 out.append((tmpl, {"action": "hunt", "monsters": [arch]}))
+    return out
+
+
+def _gen_typo_robustness(ssot, rng) -> list[tuple[str, dict]]:
+    """의미는 통하지만 STT/철자가 흔들린 발화 — LCM 이 로컬에서 잡아야 하는 안전 표본.
+
+    완전한 자유 오타 교정기는 아니지만, 실측에서 자주 나온 한국어 음소/STT 오류와 영어
+    철자 누락을 닫힌 게임 명령으로 직접 노출한다. 위치·몬스터 슬롯이 있는 케이스도
+    *의미가 분명한* 표본만 둔다.
+    """
+    out: list[tuple[str, dict]] = []
+    # 한국어 STT/구어 오타 — 의미가 분명한 명령.
+    out += [
+        ("멈처", {"action": "stop"}),
+        ("멈처줘", {"action": "stop"}),
+        ("멈추어 줘", {"action": "stop"}),
+        ("정지헤", {"action": "stop"}),
+        ("피 채어줘", {"action": "potion", "potion": "hp"}),
+        ("피채워", {"action": "potion", "potion": "hp"}),
+        ("피 체워줘", {"action": "potion", "potion": "hp"}),
+        ("물약 머거", {"action": "potion", "potion": "hp"}),
+        ("문약 먹어", {"action": "potion", "potion": "hp"}),
+        ("포션 머거", {"action": "potion", "potion": "hp"}),
+        ("힐 해줘", {"action": "potion", "potion": "hp"}),
+        ("자동 산양 켜줘", {"action": "auto_combat", "mode": "auto_hunt"}),
+        ("자동사양 켜줘", {"action": "auto_combat", "mode": "auto_hunt"}),
+        ("자동사냥 시작해조", {"action": "auto_combat", "mode": "auto_hunt"}),
+        ("오토 헌트 꺼조", {"action": "auto_combat", "mode": "off"}),
+        ("새이프존으로 가", {"action": "move", "location": "safe"}),
+        ("세이프 존으로 가", {"action": "move", "location": "safe"}),
+        ("가로수길로 이동", {"action": "move", "location": "gangnam_garosoo"}),
+        ("강남 가로수길로 이동", {"action": "move", "location": "gangnam_garosoo"}),
+        ("강남가로수길로 이동", {"action": "move", "location": "gangnam_garosoo"}),
+        ("강남 가서 사냥 좀 해줘", {"action": "hunt", "location": "gangnam"}),
+        ("강남가서 사냥 좀 해줘", {"action": "hunt", "location": "gangnam"}),
+        ("케스터 사냥", {"action": "hunt", "monsters": ["Caster"]}),
+        ("캐스 터 사냥", {"action": "hunt", "monsters": ["Caster"]}),
+        ("해골 잡아조", {"action": "hunt", "monsters": ["Skeleton"]}),
+    ]
+    # 영어 철자/문법 흔들림 — target 슬롯 쏠림 방지용으로 menu 계열을 두껍게.
+    out += [
+        ("opn inventory", {"action": "open_menu", "target": "inventory"}),
+        ("open inventry", {"action": "open_menu", "target": "inventory"}),
+        ("open invantory", {"action": "open_menu", "target": "inventory"}),
+        ("open invntory", {"action": "open_menu", "target": "inventory"}),
+        ("show inventry", {"action": "open_menu", "target": "inventory"}),
+        ("open cht", {"action": "open_menu", "target": "groupchat"}),
+        ("open chatt", {"action": "open_menu", "target": "groupchat"}),
+        ("open group chat", {"action": "open_menu", "target": "groupchat"}),
+        ("show chat", {"action": "open_menu", "target": "groupchat"}),
+        ("turn of auto hunt", {"action": "auto_combat", "mode": "off"}),
+        ("turn off auto hant", {"action": "auto_combat", "mode": "off"}),
+        ("auto hunt of", {"action": "auto_combat", "mode": "off"}),
+        ("disable auto hant", {"action": "auto_combat", "mode": "off"}),
+        ("start auto hant", {"action": "auto_combat", "mode": "auto_hunt"}),
+        ("turn on auto hant", {"action": "auto_combat", "mode": "auto_hunt"}),
+        ("hunt castars", {"action": "hunt", "monsters": ["Caster"]}),
+        ("hunt castrs", {"action": "hunt", "monsters": ["Caster"]}),
+        ("kill bruts", {"action": "hunt", "monsters": ["Brute"]}),
+        ("go to saf zone", {"action": "move", "location": "safe"}),
+        ("go to safezon", {"action": "move", "location": "safe"}),
+        ("go gangnam", {"action": "move", "location": "gangnam"}),
+        ("go to gangnum", {"action": "move", "location": "gangnam"}),
+    ]
     return out
 
 
@@ -417,13 +487,20 @@ def _gen_questions(ssot, rng) -> list[tuple[str, dict]]:
                 "물약", "장비", "세트 아이템", "사냥터", "보스", "레벨", "공격력", "방어력"])
     q_ko = ["{} 뭐야", "{}가 뭐야", "{} 어디 있어", "{} 어디야", "{}에 뭐 나와",
             "{} 어때", "{} 설명해줘", "{} 알려줘", "{} 좋아", "{} 추천해줘", "{}는 어떻게 가"]
+    archset = set(ssot["archetypes"])
     for n in nouns:
+        it = {"action": "unknown", "semantic_type": "question"}
+        if n in archset:
+            it["answer_intent"] = "query_monster_info"
         for q in rng.sample(q_ko, k=3):
-            out.append((q.format(n), {"action": "unknown"}))
+            out.append((q.format(n), dict(it)))
     en_nouns = list(ssot["archetypes"])[:12] + ["safe zone", "auto hunt", "party", "boss", "the best weapon"]
     for n in en_nouns:
+        it = {"action": "unknown", "semantic_type": "question"}
+        if n in archset:
+            it["answer_intent"] = "query_monster_info"
         for q in ("what is {}", "where is {}", "how about {}", "tell me about {}"):
-            out.append((q.format(n), {"action": "unknown"}))
+            out.append((q.format(n), dict(it)))
     return out
 
 
@@ -585,6 +662,89 @@ def _jamo_variant(text: str, rng) -> str:
     return phonetic_noise(text, rng)
 
 
+# ── LCM v2 (R2 의미 게이트 + R4a QnA) 라벨 데이터 ─────────────────────────────
+# 잡담(chat) — 게임 무관·인사. 클라는 cloud(또는 고정 응답).
+_V2_CHAT = [
+    "안녕", "안녕하세요", "반가워", "넌 누구야", "이름이 뭐야", "너 뭐야", "고마워", "수고해",
+    "잘 자", "또 보자", "사랑해", "재밌다", "심심해", "지루해", "오늘 날씨 어때", "밥 먹었어",
+    "뭐하고 놀까", "노래 불러줘", "농담 해줘", "주식 사도 돼", "내일 비 와", "점심 뭐 먹지",
+    "hello", "hi", "hey", "who are you", "what's your name", "thanks", "thank you",
+    "good job", "see you", "i'm bored", "tell me a joke",
+]
+# 게임 질문(question). (발화, answer_intent) — None 이면 로컬 답변 토픽 미상(→ cloud 후보).
+_V2_QUESTION = [
+    ("내 레벨 몇이야", "query_player_level"), ("나 몇 레벨이야", "query_player_level"),
+    ("지금 몇 레벨", "query_player_level"), ("내 레벨 알려줘", "query_player_level"),
+    ("나 몇렙이야", "query_player_level"), ("내 렙 뭐야", "query_player_level"),
+    ("레벨 알려줘", "query_player_level"), ("what level am i", "query_player_level"),
+    ("my level", "query_player_level"), ("나 레벨 몇", "query_player_level"),
+    ("내 레벨이 몇이야", "query_player_level"), ("현재 레벨 얼마야", "query_player_level"),
+    ("레벨 보여줘", "query_player_level"), ("나 몇 렙", "query_player_level"),
+    ("렙 몇이야", "query_player_level"), ("내 레벨 확인", "query_player_level"),
+    ("지금 내 레벨", "query_player_level"), ("나 레벨 알려줘", "query_player_level"),
+    ("몇 레벨이지", "query_player_level"), ("내가 몇 레벨", "query_player_level"),
+    ("내 레벨에 맞는 사냥터 어디야", "query_recommended_hunt_zone"),
+    ("어디서 사냥하면 좋아", "query_recommended_hunt_zone"),
+    ("추천 사냥터 어디야", "query_recommended_hunt_zone"),
+    ("지금 어디서 사냥해", "query_recommended_hunt_zone"),
+    ("내 레벨로 어디서 사냥해", "query_recommended_hunt_zone"),
+    ("어디 가서 사냥할까", "query_recommended_hunt_zone"),
+    ("where should i hunt", "query_recommended_hunt_zone"),
+    ("사냥터 추천해줘", "query_recommended_hunt_zone"),
+    ("갈 만한 사냥터 어디", "query_recommended_hunt_zone"),
+    ("내 레벨 사냥터", "query_recommended_hunt_zone"),
+    ("어디 사냥 가면 돼", "query_recommended_hunt_zone"),
+    ("사냥 어디서 해", "query_recommended_hunt_zone"),
+    ("맞는 사냥터 추천", "query_recommended_hunt_zone"),
+    ("레벨에 맞는 곳 어디", "query_recommended_hunt_zone"),
+    ("이 몬스터 뭐야", "query_monster_info"), ("제일 센 몬스터 뭐야", "query_monster_info"),
+    ("이 게임 어떻게 해", None), ("도움말", None), ("튜토리얼 보여줘", None),
+    ("레벨 어떻게 올려", None), ("강해지려면 어떻게 해", None), ("파티 어떻게 만들어", None),
+    ("거래 어떻게 해", None), ("물약 어디서 사", None), ("왜 자꾸 죽어", None),
+    ("라리엔이 뭐야", None), ("자동사냥이 뭐야", None), ("크리티컬이 뭐야", None),
+    ("how do i level up", None), ("how do i make a party", None),
+]
+# 괴상/무의미(nonsense) — STT 붕괴. 클라는 reject(되묻기).
+# 명령 단어(캐스터·강남·멈춰·물약 등)를 *넣지 않는다* — 넣으면 모델이 그 단어를 nonsense
+# 신호로 학습해 진짜 명령까지 침범한다. 순수 단음절/감탄사/영문난타만.
+_V2_NONSENSE_SEED = [
+    "므 어 저기 음 그", "어 음 그 저 막", "끄아 으악 뿡", "아아아 어 머", "사 어 음 캬",
+    "asdk qwe asdf", "sdf qwe bcd", "어버 그저 막에", "음 그 캬 뿡", "으 어 흠 막 그",
+]
+
+
+def _gen_v2_semantic(ssot, rng) -> list[tuple[str, dict]]:
+    """R2/R4a 라벨 데이터 — semantic_type(question/chat/nonsense) + answer_intent."""
+    out: list[tuple[str, dict]] = []
+    for t in _V2_CHAT:
+        out.append((t, {"action": "unknown", "semantic_type": "chat"}))
+    for t, ai in _V2_QUESTION:
+        it = {"action": "unknown", "semantic_type": "question"}
+        if ai:
+            it["answer_intent"] = ai
+        out.append((t, it))
+    # 몬스터 정보 질문 — archetype × 표현 → query_monster_info.
+    for arch in ssot["archetypes"]:
+        for nm in _MONSTER_KO.get(arch, [arch]):
+            for q in ("뭐야", "어때", "세냐", "약점이 뭐야", "몇 레벨이야"):
+                out.append((f"{nm} {q}", {"action": "unknown",
+                            "semantic_type": "question",
+                            "answer_intent": "query_monster_info"}))
+    # 무의미 — 시드 + 명령을 *심하게* 깨뜨리고 단음절 filler 삽입(2중 음소 노이즈).
+    for t in _V2_NONSENSE_SEED:
+        out.append((t, {"action": "unknown", "semantic_type": "nonsense"}))
+    # 무의미 — *명령 단어를 쓰지 않고* 순수 단음절/감탄사 나열로 생성. 명령을 깨뜨리면("캐스터
+    # 사냥"→"캐스 터…") 모델이 명령 단어를 nonsense 신호로 학습해 진짜 명령("캐스터 사냥"·
+    # "간남으로 가")까지 nonsense 로 침범한다. 음소 오타 명령(R1, 1중)과 명확히 분리한다.
+    syl = ["어", "음", "그", "저", "막", "에", "으", "뭐", "캬", "뿡", "쿵", "끄", "악",
+           "아", "우", "흠", "엥", "쩜", "냐", "꺄", "뀨", "삐"]
+    for _ in range(280):
+        n = rng.randint(3, 6)
+        out.append((" ".join(rng.choice(syl) for _ in range(n)),
+                    {"action": "unknown", "semantic_type": "nonsense"}))
+    return out
+
+
 def generate(ssot: dict, seed: int = 7) -> list[dict]:
     """모든 템플릿을 펼쳐 (text, intent) 페어 리스트를 만든다(재현 가능)."""
     rng = random.Random(seed)
@@ -592,12 +752,13 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs += _gen_move(ssot, rng)
     pairs += _gen_hunt(ssot, rng)
     pairs += _gen_simple(ssot, rng)
+    pairs += _gen_typo_robustness(ssot, rng)
     pairs += _gen_questions(ssot, rng)
     pairs += _gen_complex_location(ssot, rng)
     pairs += _gen_negation_compound(ssot, rng)
     pairs += _gen_context_dependent(rng)
     pairs += _gen_polite(ssot, rng)
-    pairs += _gen_smalltalk(rng)
+    pairs += _gen_v2_semantic(ssot, rng)  # R2/R4a — question/chat/nonsense + answer_intent.
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).
     dedup: dict[str, dict] = {}
     for text, intent in pairs:
@@ -607,7 +768,10 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     # 변형(받침/초성/중성 혼동). 2개는 노이즈 과다로 *깨끗한 정상 발화* confidence 가 하락하는
     # 회귀가 측정됐다(R1 튜닝: "여기서 사냥하자" sml→fb). dataset aug_p 와 합쳐 균형을 잡는다.
     rng2 = random.Random(seed + 13)
-    cmd = [r for r in rows if r["intent"]["action"] != "unknown"]
+    # 명령 + 게임 질문(question)에 음소 변형 — "내 랩 몇이야" 같은 STT 오타도 robust 하게.
+    # nonsense/chat 은 변형하지 않는다(그 자체가 라벨).
+    cmd = [r for r in rows if r["intent"]["action"] != "unknown"
+           or r["intent"].get("semantic_type") == "question"]
     for r in cmd:
         v = _jamo_variant(r["text"], rng2)
         if v.strip() and v not in dedup:

@@ -84,14 +84,32 @@ class LcmRuntime:
         intent = decode_intent(heads, self.ls)
         return intent, action_confidence(logits)
 
+    def _route(self, st: str, ai, action: str, conf: float) -> str:
+        """LCM v2 5-route 결정(plan §2.3) — semantic_type 게이트 + answer_intent + confidence."""
+        if st == "nonsense":
+            return "reject"                                    # STT 붕괴 → 차단+되묻기
+        if st == "question":
+            return "answer_local" if ai else "cloud"           # 게임 QnA(토픽 有) vs 일반질문
+        if st == "chat":
+            return "cloud"                                     # 잡담 → DeepSeek
+        if action != "unknown" and conf >= self.threshold:
+            return "execute"                                   # 명령 고신뢰 → 로컬 실행
+        return "cloud"                                         # 명령 저신뢰 → DeepSeek
+
     def _classify_one(self, text: str) -> dict:
-        """단일 발화 판정(분할 전)."""
+        """단일 발화 판정(분할 전). route(execute/answer_local/clarify/reject/cloud) 포함."""
         if not _MEANINGFUL.search(text):
-            return {"layer": "fallback", "confidence": 0.0, "intent": None}
+            return {"layer": "fallback", "route": "reject", "confidence": 0.0,
+                    "intent": None}
         intent, conf = self.predict(text)
-        if intent["action"] == "unknown" or conf < self.threshold:
-            return {"layer": "fallback", "confidence": conf, "intent": None}
-        return {"layer": "sml", "confidence": conf, "intent": intent}
+        st = intent.get("semantic_type", "command")
+        ai = intent.get("answer_intent")
+        route = self._route(st, ai, intent["action"], conf)
+        layer = "sml" if route == "execute" else "fallback"
+        return {"layer": layer, "route": route, "semantic_type": st,
+                "answer_intent": ai, "confidence": conf,
+                "intent": intent if layer == "sml" else None,
+                "intent_all": intent}
 
     def classify(self, text: str) -> dict:
         """3계층 중 2차(SML) 판정. 다중동작이면 분할해 actions 배열로 결합한다.

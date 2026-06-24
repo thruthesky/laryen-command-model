@@ -24,6 +24,20 @@ HP_BUCKETS = ["<none>", "10", "20", "30", "40", "50", "60", "70", "80", "90"]
 AUTO_POTION_LABELS_SUFFIX = ["all"]
 NONE = "<none>"
 
+# ── LCM v2 (R2/R4a) ──────────────────────────────────────────────────────────
+# semantic_type — 1단계 의미 게이트(plan §2.2). route 결정의 핵심 신호:
+#   command(로컬 실행) / question(게임 QnA→answer_local) / chat(잡담→cloud) /
+#   nonsense(STT 붕괴→reject). confidence 로는 안 갈리므로(측정) *학습된 헤드* 로 판단.
+SEMANTIC_TYPES = ["command", "question", "chat", "nonsense"]
+# answer_intent — 게임 QnA 토픽(plan §2.4, R4a 1차). 실제 답변은 클라가 게임 상태/SSOT 에서
+# 조립(상태값은 학습 안 함). <none> = 질문 아님/토픽 미상.
+ANSWER_INTENTS = [
+    NONE,
+    "query_player_level",          # "내 레벨 몇이야"
+    "query_recommended_hunt_zone", # "내 레벨에 맞는 사냥터 어디야"
+    "query_monster_info",          # "캐스터 뭐야"
+]
+
 
 def load_ssot(path: Path | str = SSOT_PATH) -> dict:
     with open(path, encoding="utf-8") as f:
@@ -50,6 +64,9 @@ class LabelSpace:
         # multi-label 헤드(sigmoid). monsters=archetype, auto_potions=물약+all.
         self.archetypes = list(ssot["archetypes"])
         self.auto_potions = list(ssot["potions"]) + AUTO_POTION_LABELS_SUFFIX
+        # LCM v2 — 의미 게이트(R2) + QnA(R4a) 헤드.
+        self.semantic_types = list(SEMANTIC_TYPES)
+        self.answer_intents = list(ANSWER_INTENTS)
 
     # ── 헤드 정의: (이름, 종류, 라벨목록). 종류 = 'single' | 'multi' | 'binary' ──
     def heads(self) -> list[tuple[str, str, list[str]]]:
@@ -69,6 +86,9 @@ class LabelSpace:
             ("auto_potions", "multi", self.auto_potions),
             ("retreat_to_safe", "binary", ["0", "1"]),
             ("auto_potion_enable", "binary", ["0", "1"]),
+            # LCM v2 — 의미 게이트(R2) + QnA 토픽(R4a).
+            ("semantic_type", "single", self.semantic_types),
+            ("answer_intent", "single", self.answer_intents),
         ]
 
     def index(self, head: str, label: str) -> int:
@@ -145,6 +165,13 @@ def encode_intent(intent: dict, ls: LabelSpace) -> dict:
             if p in ls.auto_potions:
                 out["auto_potions"][ls.auto_potions.index(p)] = 1
         out["auto_potion_enable"] = 0 if intent.get("enable") is False else 1
+    # LCM v2 — 의미 게이트(R2): 미지정 시 명령은 command, action=unknown 은 chat 으로 본다.
+    st = intent.get("semantic_type") or ("command" if a != "unknown" else "chat")
+    out["semantic_type"] = (
+        ls.semantic_types.index(st) if st in ls.semantic_types
+        else ls.semantic_types.index("chat"))
+    ai = intent.get("answer_intent", NONE)
+    out["answer_intent"] = ls.answer_intents.index(ai) if ai in ls.answer_intents else 0
     return out
 
 
@@ -205,6 +232,12 @@ def decode_intent(heads: dict, ls: LabelSpace) -> dict:
         if pots:
             out["potions"] = pots
         out["enable"] = bool(heads["auto_potion_enable"])
+    # LCM v2 — 의미 게이트 + QnA 토픽(클라가 route 결정·답변 조립에 사용).
+    if "semantic_type" in heads:
+        out["semantic_type"] = ls.semantic_types[heads["semantic_type"]]
+        ai = ls.answer_intents[heads["answer_intent"]]
+        if ai != NONE:
+            out["answer_intent"] = ai
     return out
 
 
