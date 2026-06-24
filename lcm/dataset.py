@@ -8,34 +8,14 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
+from .phonetics import phonetic_noise
 from .schema import LabelSpace, encode_intent
 
 
-def _jamo_one(ch: str) -> str:
-    code = ord(ch) - 0xAC00
-    cho, jung, jong = code // 588, (code % 588) // 28, code % 28
-    if jong and random.random() < 0.5:
-        jong = 0                                    # 받침 탈락(멈춤→머춤)
-    else:
-        jung = (jung + random.choice([-1, 1])) % 21  # 모음 혼동(사냥→사녕)
-    return chr(0xAC00 + (cho * 21 + jung) * 28 + jong)
-
-
 def _jamo_noise(text: str) -> str:
-    """한글 1~2글자의 받침 탈락/모음 ±1 변형(STT 음소 오류 모사 — 더 강건하게)."""
-    idxs = [i for i, c in enumerate(text) if "가" <= c <= "힣"]
-    if not idxs:
-        return text
-    # 글자 수에 비례해 1~3글자 변형(STT 음소 오류는 여러 글자에 걸쳐 날 수 있음).
-    k = 1
-    if len(idxs) >= 3 and random.random() < 0.5:
-        k = 2
-    if len(idxs) >= 6 and random.random() < 0.3:
-        k = 3
-    chars = list(text)
-    for i in random.sample(idxs, k=min(k, len(idxs))):
-        chars[i] = _jamo_one(chars[i])
-    return "".join(chars)
+    """한글 음소 혼동 변형(받침/초성/중성 혼동 + 탈락 — phonetics 공유 매트릭스). 기존
+    '받침 탈락+모음 ±1' 보다 실제 STT 오류(간남·먼춰·문약)를 잘 모사한다."""
+    return phonetic_noise(text, random)
 
 
 def read_jsonl(path: Path | str) -> list[dict]:

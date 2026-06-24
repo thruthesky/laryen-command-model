@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import random
 
+from .phonetics import phonetic_noise
+
 # ── 방향 단어 → 화면 시계각도(voice_intent.dart [방향 이동] 규칙과 동일) ──────────
 _DIR_WORDS = {
     0: ["위", "위쪽", "북", "북쪽", "up", "north"],
@@ -578,21 +580,9 @@ def _gen_smalltalk(rng) -> list[tuple[str, dict]]:
 
 
 def _jamo_variant(text: str, rng) -> str:
-    """한글 1~2글자 받침 탈락/모음 ±1(결정적 — augment 확률성 보완해 phonetic 안정)."""
-    idxs = [i for i, c in enumerate(text) if "가" <= c <= "힣"]
-    if not idxs:
-        return text
-    chars = list(text)
-    k = 2 if len(idxs) >= 3 and rng.random() < 0.5 else 1
-    for i in rng.sample(idxs, min(k, len(idxs))):
-        code = ord(chars[i]) - 0xAC00
-        cho, jung, jong = code // 588, (code % 588) // 28, code % 28
-        if jong and rng.random() < 0.5:
-            jong = 0
-        else:
-            jung = (jung + rng.choice([-1, 1])) % 21
-        chars[i] = chr(0xAC00 + (cho * 21 + jung) * 28 + jong)
-    return "".join(chars)
+    """한글 음소 혼동 변형(받침/초성/중성 혼동 + 탈락 — phonetics 공유 매트릭스). 기존
+    '받침 탈락+모음 ±1' 보다 실제 STT 오류(간남·먼춰·문약)를 잘 모사한다."""
+    return phonetic_noise(text, rng)
 
 
 def generate(ssot: dict, seed: int = 7) -> list[dict]:
@@ -613,10 +603,12 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     for text, intent in pairs:
         dedup[text.strip()] = intent
     rows = [{"text": t, "intent": i} for t, i in dedup.items()]
-    # 결정적 자모 변형(명령 발화만) — augment 확률성을 보완해 phonetic 강건성을 안정화.
+    # 결정적 음소 혼동 변형(명령 발화만) — phonetic 강건성 안정화. *전체* 명령에 발화당 1개
+    # 변형(받침/초성/중성 혼동). 2개는 노이즈 과다로 *깨끗한 정상 발화* confidence 가 하락하는
+    # 회귀가 측정됐다(R1 튜닝: "여기서 사냥하자" sml→fb). dataset aug_p 와 합쳐 균형을 잡는다.
     rng2 = random.Random(seed + 13)
     cmd = [r for r in rows if r["intent"]["action"] != "unknown"]
-    for r in rng2.sample(cmd, k=min(1500, len(cmd))):
+    for r in cmd:
         v = _jamo_variant(r["text"], rng2)
         if v.strip() and v not in dedup:
             dedup[v] = r["intent"]
