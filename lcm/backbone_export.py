@@ -1,38 +1,29 @@
-"""Backbone LCM → ONNX int8 (온디바이스 OTA). 멀티헤드 dict 출력을 tuple 로 펴서 export.
+"""Backbone → 온디바이스 자산: e5 transformer int8(optimum) + 헤드 weight JSON.
 
-산출: artifacts/lcm_backbone.onnx(fp32) · lcm_backbone.int8.onnx(동적 양자화) · 헤드 순서 메타.
-크기를 출력해 200M/온디바이스 적합성을 확인한다(int8 ≈ params MB).
+**왜 분리인가**: 멀티헤드 통합 ONNX 는 ORT quantizer 의 shape inference 가 깨진다(멀티 output
+384 vs 10). e5 transformer 만 optimum 으로 int8(검증 경로, 470MB→118MB) 하고, 17개 헤드는
+작은 Linear 라 weight JSON(0.7MB)으로 분리한다. 클라 추론 파이프라인:
+  SentencePiece(XLM-R) → e5 int8 ONNX → mean pooling([B,seq,384]→[B,384])
+    → 17개 헤드 행렬곱(JSON weight) → decode_intent → 5-route.
+
+산출(artifacts/):
+  - e5_int8/model_quantized.onnx  : e5 transformer int8 (~118MB, OTA)
+  - e5_ft/                        : SentencePiece 토크나이저(클라 동봉/OTA)
+  - lcm_backbone_heads.json       : 17 헤드 weight/bias + 라벨 + 메타 (~0.7MB, OTA)
+
+사용: HF_HOME=.ai_models/huggingface .venv/bin/python -m lcm.backbone_export
 """
 from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 
 import torch
-from onnxruntime.quantization import QuantType, quantize_dynamic
 
 from .backbone_train import BACKBONE, CKPT, BackboneLcm
 from .schema import LabelSpace, load_ssot
 
-ROOT = Path(__file__).resolve().parents[1]
-ART = ROOT / "artifacts"
-FP32 = ART / "lcm_backbone.onnx"
-INT8 = ART / "lcm_backbone.int8.onnx"
-META = ART / "lcm_backbone.meta.json"
-
-
-class ExportWrapper(torch.nn.Module):
-    """dict 출력 → 고정 순서 tuple (ONNX output_names 와 1:1)."""
-
-    def __init__(self, model: BackboneLcm, head_names: list[str]):
-        super().__init__()
-        self.model = model
-        self.head_names = head_names
-
-    def forward(self, input_ids, attention_mask):
-        out = self.model(input_ids, attention_mask)
-        return tuple(out[n] for n in self.head_names)
+MAX_ONDEVICE_MB = 200  # 🛑 온디바이스 용량 상한(2026-06-24 사용자 지시).
 
 
 def main() -> int:
@@ -41,32 +32,48 @@ def main() -> int:
     blob = torch.load(CKPT, map_location="cpu")
     model.load_state_dict(blob["model"])
     model.eval()
-    head_names = [n for n, _, _ in ls.heads()]
-    wrapper = ExportWrapper(model, head_names)
 
-    ART.mkdir(parents=True, exist_ok=True)
-    dummy_ids = torch.ones(1, 16, dtype=torch.long)
-    dummy_mask = torch.ones(1, 16, dtype=torch.long)
-    torch.onnx.export(
-        wrapper, (dummy_ids, dummy_mask), str(FP32),
-        input_names=["input_ids", "attention_mask"], output_names=head_names,
-        dynamic_axes={"input_ids": {0: "b", 1: "s"}, "attention_mask": {0: "b", 1: "s"}},
-        opset_version=17)
-    quantize_dynamic(str(FP32), str(INT8), weight_type=QuantType.QInt8)
+    # 1) fine-tuned e5 backbone 을 HF 형식으로 저장 → optimum 표준 int8 경로.
+    from transformers import AutoTokenizer
+    model.backbone.save_pretrained("artifacts/e5_ft")
+    AutoTokenizer.from_pretrained(BACKBONE).save_pretrained("artifacts/e5_ft")
 
-    META.write_text(json.dumps({
-        "backbone": BACKBONE, "head_order": head_names,
-        "head_specs": [(n, k, lbls) for n, k, lbls in ls.heads()],
-        "max_len": 48,
-    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    from optimum.onnxruntime import ORTModelForFeatureExtraction, ORTQuantizer
+    from optimum.onnxruntime.configuration import AutoQuantizationConfig
+    m = ORTModelForFeatureExtraction.from_pretrained("artifacts/e5_ft", export=True)
+    m.save_pretrained("artifacts/e5_onnx")
+    q = ORTQuantizer.from_pretrained("artifacts/e5_onnx")
+    qc = AutoQuantizationConfig.avx512_vnni(is_static=False, per_channel=False)
+    q.quantize(save_dir="artifacts/e5_int8", quantization_config=qc)
 
-    fp32_mb = os.path.getsize(FP32) / 1e6
-    int8_mb = os.path.getsize(INT8) / 1e6
-    print(f"✅ ONNX export — fp32 {fp32_mb:.0f}MB → int8 {int8_mb:.0f}MB  (헤드 {len(head_names)})")
-    if int8_mb > 200:
-        print(f"🛑 경고(사람 개발자): int8 {int8_mb:.0f}MB > 200MB — 온디바이스 부적합, 더 작은 backbone 필요.")
+    # 2) 17개 헤드 weight/bias → JSON (클라 dart 행렬곱).
+    heads = {}
+    for name, kind, labels in ls.heads():
+        lin = model.heads[name]
+        heads[name] = {
+            "kind": kind, "labels": labels,
+            "weight": [[round(x, 5) for x in row] for row in lin.weight.detach().tolist()],
+            "bias": [round(x, 5) for x in lin.bias.detach().tolist()],
+        }
+    meta = {
+        "backbone": BACKBONE, "hidden": model.backbone.config.hidden_size,
+        "pooling": "mean", "max_len": 48, "heads": heads,
+        "head_order": [n for n, _, _ in ls.heads()],
+        "semantic_types": ls.semantic_types, "answer_intents": ls.answer_intents,
+    }
+    hp = "artifacts/lcm_backbone_heads.json"
+    json.dump(meta, open(hp, "w"), ensure_ascii=False)
+
+    # 3) 용량 가드.
+    int8 = "artifacts/e5_int8/model_quantized.onnx"
+    int8_mb = os.path.getsize(int8) / 1e6
+    head_mb = os.path.getsize(hp) / 1e6
+    total = int8_mb + head_mb
+    print(f"✅ e5 int8 {int8_mb:.0f}MB + 헤드 {head_mb:.1f}MB = 총 {total:.0f}MB")
+    if total > MAX_ONDEVICE_MB:
+        print(f"🛑 경고(사람 개발자): 온디바이스 총량 {total:.0f}MB > {MAX_ONDEVICE_MB}MB — 더 작은 backbone 필요.")
     else:
-        print(f"✅ 온디바이스 용량 가드: int8 {int8_mb:.0f}MB ≤ 200MB")
+        print(f"✅ 온디바이스 용량 가드 통과: {total:.0f}MB ≤ {MAX_ONDEVICE_MB}MB")
     return 0
 
 

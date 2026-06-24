@@ -49,7 +49,7 @@
       {"text": "오토 헌트 끄조", "action": "auto_combat", "mode": "off"},
       {"text": "자동사양 시자케", "action": "auto_combat", "mode": "auto_hunt"},
       {"text": "메뉴 여러", "action": "open_menu"},
-      {"text": "관악산 으로 이동 해줘", "action": "move", "location": "kwanak"},
+      {"text": "관악산 으로 이동 해줘", "action": "move", "location": "kwanak_mountain"},
       {"text": "사냥 좀 하자고", "action": "hunt"},
       {"text": "동대문 가서 사냥 해", "action": "hunt", "location": "dongdaemun"}
     ]
