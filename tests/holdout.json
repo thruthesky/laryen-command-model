@@ -1,0 +1,80 @@
+{
+  "_doc": "실사용 안정성 holdout 평가셋(2026-06-24 양팀 합의). synth val(0.986)은 학습과 같은 템플릿 분포라 실사용을 증명 못 한다. 4 family 로 from-scratch vs backbone 을 같은 기준으로 비교한다. expect 키: answer_intent=고정지식 의도 / action=명령 / safe='not_execute'(맥락지시어·무의미는 임의 실행 금지=clarify/cloud/reject 여야 안전).",
+  "template_family": {
+    "_doc": "학습 템플릿에 없는 자연스러운/긴 표현. 의도는 명확 — 의미 일반화 측정.",
+    "cases": [
+      {"text": "포션이 어떤 효과를 내는지 궁금합니다", "answer_intent": "query_potion_effect"},
+      {"text": "물약을 마시면 무슨 일이 일어나나요", "answer_intent": "query_potion_effect"},
+      {"text": "can you tell me what the potions actually do", "answer_intent": "query_potion_effect"},
+      {"text": "불멸 세트를 완성하면 어떤 능력을 얻게 되나요", "answer_intent": "query_gear_set_effect"},
+      {"text": "세트 아이템을 전부 모으면 뭐가 좋아지는 거야", "answer_intent": "query_gear_set_effect"},
+      {"text": "how do the gear sets actually work in this game", "answer_intent": "query_gear_set_effect"},
+      {"text": "어떻게 하면 레벨을 빨리 올릴 수 있을까요", "answer_intent": "query_level_progression"},
+      {"text": "경험치를 효율적으로 모으는 방법이 뭔가요", "answer_intent": "query_level_progression"},
+      {"text": "whats the fastest way to level up my character", "answer_intent": "query_level_progression"},
+      {"text": "친구랑 같이 파티를 맺으려면 어떻게 해야 하나요", "answer_intent": "query_party_info"},
+      {"text": "파티 시스템이 정확히 어떻게 돌아가는지 설명해줘", "answer_intent": "query_party_info"},
+      {"text": "다른 사람이랑 아이템을 주고받고 싶은데 방법이 뭐야", "answer_intent": "query_trade_info"},
+      {"text": "이 게임의 배경 이야기가 궁금해요", "answer_intent": "query_world_lore"},
+      {"text": "옵시디언이라는 게 도대체 뭐예요", "answer_intent": "query_world_lore"},
+      {"text": "whats the story behind this whole game", "answer_intent": "query_world_lore"},
+      {"text": "이 게임을 처음 하는데 어떻게 플레이하는 건가요", "answer_intent": "query_help_controls"},
+      {"text": "게임 조작이 어떻게 되는지 가르쳐줘", "answer_intent": "query_help_controls"}
+    ]
+  },
+  "multilingual": {
+    "_doc": "한·영·중·일 4개 언어 동등 지원 측정(2026-06-24). 학습에 없는 표현으로 중/일 일반화 확인. backbone 의 다국어 의미 일반화가 핵심.",
+    "cases": [
+      {"text": "药水到底有什么用", "answer_intent": "query_potion_effect"},
+      {"text": "ポーションは何の効果があるの", "answer_intent": "query_potion_effect"},
+      {"text": "套装搭配齐了有什么好处", "answer_intent": "query_gear_set_effect"},
+      {"text": "セットを揃えると何が良くなる", "answer_intent": "query_gear_set_effect"},
+      {"text": "怎样才能快速升级", "answer_intent": "query_level_progression"},
+      {"text": "どうすれば早くレベルが上がる", "answer_intent": "query_level_progression"},
+      {"text": "怎么和朋友组队", "answer_intent": "query_party_info"},
+      {"text": "友達とパーティーを組むには", "answer_intent": "query_party_info"},
+      {"text": "这个游戏的世界观是什么", "answer_intent": "query_world_lore"},
+      {"text": "このゲームの世界観について教えて", "answer_intent": "query_world_lore"},
+      {"text": "新手该怎么操作这个游戏", "answer_intent": "query_help_controls"},
+      {"text": "初心者だけど操作方法を教えて", "answer_intent": "query_help_controls"}
+    ]
+  },
+  "stt_error": {
+    "_doc": "STT 가 망가뜨린 전사(받침/모음/띄어쓰기/음운 혼동). 의미는 통한다 — 명령 robust 측정.",
+    "cases": [
+      {"text": "피 체워 조", "action": "potion"},
+      {"text": "문약 머거", "action": "potion"},
+      {"text": "강남가서 캐스 터 좀 잡아줘", "action": "hunt", "location": "gangnam"},
+      {"text": "간남으로 가줘", "action": "move", "location": "gangnam"},
+      {"text": "오토 헌트 끄조", "action": "auto_combat", "mode": "off"},
+      {"text": "자동사양 시자케", "action": "auto_combat", "mode": "auto_hunt"},
+      {"text": "메뉴 여러", "action": "open_menu"},
+      {"text": "관악산 으로 이동 해줘", "action": "move", "location": "kwanak"},
+      {"text": "사냥 좀 하자고", "action": "hunt"},
+      {"text": "동대문 가서 사냥 해", "action": "hunt", "location": "dongdaemun"}
+    ]
+  },
+  "context_deixis": {
+    "_doc": "🛑 맥락 지시어(거기/그거/아까 그곳) — 무엇을 가리키는지 모름. 임의 실행은 치명적 false positive. 안전한 동작 = clarify/cloud(실행 금지). expect safe=not_execute.",
+    "cases": [
+      {"text": "거기로 가서 그거 잡아", "safe": "not_execute"},
+      {"text": "아까 말한 곳에서 사냥해", "safe": "not_execute"},
+      {"text": "저번에 갔던 데로 가자", "safe": "not_execute"},
+      {"text": "그쪽으로 좀 가줘", "safe": "not_execute"},
+      {"text": "아까 그 몬스터 잡아", "safe": "not_execute"},
+      {"text": "거기 있는 거 공격해", "safe": "not_execute"},
+      {"text": "그 위치로 이동", "safe": "not_execute"}
+    ]
+  },
+  "adversarial": {
+    "_doc": "명령이 아닌 발화(잡담·조건문·무의미). 임의 실행 금지 = reject/cloud. expect safe=not_execute.",
+    "cases": [
+      {"text": "나 죽을거 같으면 알아서 도망가", "safe": "not_execute"},
+      {"text": "오늘 날씨 진짜 좋다 그치", "safe": "not_execute"},
+      {"text": "아 배고프다 밥 먹고 싶어", "safe": "not_execute"},
+      {"text": "이 게임 만든 사람 누구야", "safe": "not_execute"},
+      {"text": "음 그러니까 저기 그 뭐냐", "safe": "not_execute"},
+      {"text": "내일 또 접속할게", "safe": "not_execute"}
+    ]
+  }
+}

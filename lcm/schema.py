@@ -28,14 +28,25 @@ NONE = "<none>"
 # semantic_type — 1단계 의미 게이트(plan §2.2). route 결정의 핵심 신호:
 #   command(로컬 실행) / question(게임 QnA→answer_local) / chat(잡담→cloud) /
 #   nonsense(STT 붕괴→reject). confidence 로는 안 갈리므로(측정) *학습된 헤드* 로 판단.
-SEMANTIC_TYPES = ["command", "question", "chat", "nonsense"]
+# ambiguous = 맥락지시어("거기/그거/아까 그곳")처럼 의미는 있으나 *무엇을 가리키는지 모르는*
+# 발화. 임의 실행은 치명적 false positive 라 route=clarify(되묻기)로 보낸다(양팀 합의 안전 규칙).
+SEMANTIC_TYPES = ["command", "question", "chat", "nonsense", "ambiguous"]
 # answer_intent — 게임 QnA 토픽(plan §2.4, R4a 1차). 실제 답변은 클라가 게임 상태/SSOT 에서
 # 조립(상태값은 학습 안 함). <none> = 질문 아님/토픽 미상.
 ANSWER_INTENTS = [
     NONE,
-    "query_player_level",          # "내 레벨 몇이야"
+    # 상태의존 — 클라가 game state(serverProgression)로 답을 채운다.
+    "query_player_level",          # "내 레벨 몇이야" (lv/처치)
     "query_recommended_hunt_zone", # "내 레벨에 맞는 사냥터 어디야"
-    "query_monster_info",          # "캐스터 뭐야"
+    "query_monster_info",          # "캐스터 뭐야" (종류 개요)
+    # 고정지식(Smart LCM train7) — 클라가 게임지식 OTA answers[intent] 로 즉답(앱 배포 0).
+    "query_potion_effect",         # "물약 효과 뭐야"
+    "query_gear_set_effect",       # "빅터 세트 효과"
+    "query_level_progression",     # "레벨업 어떻게 해"
+    "query_party_info",            # "파티 어떻게 만들어"
+    "query_trade_info",            # "교환 어떻게 해"
+    "query_world_lore",            # "세계관이 뭐야"
+    "query_help_controls",         # "어떻게 조작해"
 ]
 
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 import random
 
 from .phonetics import phonetic_noise
+from .synth_i18n import gen_i18n
 
 # ── 방향 단어 → 화면 시계각도(voice_intent.dart [방향 이동] 규칙과 동일) ──────────
 _DIR_WORDS = {
@@ -71,7 +72,11 @@ _MODE_PHRASES = {
     "off": ["자동사냥 꺼", "자동 사냥 꺼줘", "오토 꺼", "자동사냥 중지", "자동사냥 멈춰",
             "오토 끄기", "자동전투 꺼", "자동사냥 꺼줘", "오토 모드 꺼", "자동전투 중지",
             "자동사냥 비활성화", "오토 정지", "자동 전투 꺼줘", "오토 사냥 꺼", "자동사냥 끄기",
-            "turn off auto hunt", "auto hunt off", "disable auto hunt", "auto combat off"],
+            "자동사냥 그만", "오토 그만", "자동사냥 빼", "오토 빼줘", "자동사냥 해제", "오토 해제",
+            "turn off auto hunt", "auto hunt off", "disable auto hunt", "auto combat off",
+            "turn it off", "turn auto hunt off", "stop auto hunt", "stop auto hunting",
+            "disable auto combat", "auto off", "turn off auto combat", "switch off auto hunt",
+            "turn the auto hunt off", "stop the auto hunt"],
     "magnetic": ["도착하면 자동공격", "도착 후 자동 공격", "근처 자동 공격", "자석 모드",
                  "마그네틱 모드", "도착하면 주변 공격", "도착 후 주변 공격", "도착하면 근처 공격",
                  "자석모드 켜", "도착하면 알아서 공격", "도착 후 자동 전투", "magnetic mode", "magnetic on"],
@@ -698,12 +703,85 @@ _V2_QUESTION = [
     ("맞는 사냥터 추천", "query_recommended_hunt_zone"),
     ("레벨에 맞는 곳 어디", "query_recommended_hunt_zone"),
     ("이 몬스터 뭐야", "query_monster_info"), ("제일 센 몬스터 뭐야", "query_monster_info"),
-    ("이 게임 어떻게 해", None), ("도움말", None), ("튜토리얼 보여줘", None),
-    ("레벨 어떻게 올려", None), ("강해지려면 어떻게 해", None), ("파티 어떻게 만들어", None),
-    ("거래 어떻게 해", None), ("물약 어디서 사", None), ("왜 자꾸 죽어", None),
-    ("라리엔이 뭐야", None), ("자동사냥이 뭐야", None), ("크리티컬이 뭐야", None),
-    ("how do i level up", None), ("how do i make a party", None),
+    # ── Smart LCM 고정지식 7종(한/영) — 답변은 게임지식 OTA answers 에서 조회 ──
+    ("물약 효과 뭐야", "query_potion_effect"), ("물약 종류 뭐 있어", "query_potion_effect"),
+    ("포션 효과 알려줘", "query_potion_effect"), ("어떤 물약 있어", "query_potion_effect"),
+    ("hp 물약 효과", "query_potion_effect"), ("공격속도 물약 뭐야", "query_potion_effect"),
+    ("물약 뭐 있어", "query_potion_effect"), ("달리기 물약 효과", "query_potion_effect"),
+    ("what do potions do", "query_potion_effect"), ("potion effects", "query_potion_effect"),
+    ("what potions are there", "query_potion_effect"),
+    ("빅터 세트 효과", "query_gear_set_effect"), ("불멸 세트 뭐야", "query_gear_set_effect"),
+    ("강철 세트 효과", "query_gear_set_effect"), ("세트 효과 알려줘", "query_gear_set_effect"),
+    ("세트 아이템 뭐야", "query_gear_set_effect"), ("장비 세트 효과", "query_gear_set_effect"),
+    ("어떤 세트가 강해", "query_gear_set_effect"), ("세트 종류 뭐 있어", "query_gear_set_effect"),
+    ("victor set effect", "query_gear_set_effect"), ("immortal set bonus", "query_gear_set_effect"),
+    ("what is gear set", "query_gear_set_effect"), ("set item effect", "query_gear_set_effect"),
+    ("레벨업 어떻게 해", "query_level_progression"), ("레벨 어떻게 올려", "query_level_progression"),
+    ("경험치 어떻게 벌어", "query_level_progression"), ("강해지려면 어떻게 해", "query_level_progression"),
+    ("레벨업 방법", "query_level_progression"), ("최대 레벨 몇이야", "query_level_progression"),
+    ("어떻게 강해져", "query_level_progression"), ("렙업 어떻게", "query_level_progression"),
+    ("how do i level up", "query_level_progression"), ("how do i get stronger", "query_level_progression"),
+    ("max level", "query_level_progression"), ("how to gain exp", "query_level_progression"),
+    ("파티 어떻게 만들어", "query_party_info"), ("파티 뭐야", "query_party_info"),
+    ("파티 어떻게 해", "query_party_info"), ("같이 사냥 어떻게 해", "query_party_info"),
+    ("파티 인원 몇명", "query_party_info"), ("파티 경험치 어떻게", "query_party_info"),
+    ("파티 맺는 법", "query_party_info"),
+    ("how does party work", "query_party_info"), ("how do i make a party", "query_party_info"),
+    ("교환 어떻게 해", "query_trade_info"), ("거래 어떻게 해", "query_trade_info"),
+    ("교환 뭐야", "query_trade_info"), ("아이템 교환 방법", "query_trade_info"),
+    ("물약 교환 어떻게", "query_trade_info"), ("거래 방법 알려줘", "query_trade_info"),
+    ("how to trade", "query_trade_info"), ("how does trade work", "query_trade_info"),
+    ("세계관이 뭐야", "query_world_lore"), ("이 게임 스토리 뭐야", "query_world_lore"),
+    ("옵시디언이 뭐야", "query_world_lore"), ("넥서스가 뭐야", "query_world_lore"),
+    ("이 게임 배경 뭐야", "query_world_lore"), ("왜 ai가 나와", "query_world_lore"),
+    ("게임 세계관 알려줘", "query_world_lore"), ("라리엔이 뭐야", "query_world_lore"),
+    ("what is this world", "query_world_lore"), ("game story", "query_world_lore"),
+    ("who is obsidian", "query_world_lore"), ("what is the lore", "query_world_lore"),
+    ("어떻게 조작해", "query_help_controls"), ("어떻게 플레이해", "query_help_controls"),
+    ("조작법 알려줘", "query_help_controls"), ("어떻게 움직여", "query_help_controls"),
+    ("이 게임 어떻게 해", "query_help_controls"), ("도움말", "query_help_controls"),
+    ("튜토리얼 보여줘", "query_help_controls"), ("자동사냥이 뭐야", "query_help_controls"),
+    ("how do i play", "query_help_controls"), ("how to control", "query_help_controls"),
+    ("how do i move", "query_help_controls"),
+    # 일반 질문(answer_intent 없음 → cloud, AI 챗봇이 답) — 고정지식으로 못 답하는 것만.
+    ("물약 어디서 사", None), ("왜 자꾸 죽어", None), ("크리티컬이 뭐야", None),
 ]
+
+# Smart LCM 고정지식 의도 — 주어 × 어미 동적 증강 SSOT(각 ~50개, 한/영). _V2_QUESTION 의
+# 명시 발화에 더해 표현 다양성을 키워 표면 패턴 과적합을 완화한다. 측정: monster_info 가
+# "X 뭐야" 패턴을 독점(76%)해 "세계관이 뭐야"가 monster 로 끌려갔다 → 주어 토큰(세계관·물약·
+# 파티…)에 의도가 묶이도록 주어를 다양화하고 의도별 데이터를 균형 맞춘다.
+_FIXED_INTENT_AUG = {
+    "query_potion_effect": (
+        ["물약", "포션", "물약은", "물약들", "회복 물약", "버프 물약", "potion", "potions"],
+        ["효과 뭐야", "효과 알려줘", "뭐가 있어", "어떤 게 있어", "설명해줘", "종류 뭐야",
+         "효과가 궁금해", "what do they do", "effects", "list them", "explain"]),
+    "query_gear_set_effect": (
+        ["세트", "세트 아이템", "장비 세트", "빅터 세트", "불멸 세트", "강철 세트", "gear set", "set"],
+        ["효과 뭐야", "효과 알려줘", "뭐가 좋아", "설명해줘", "능력치 뭐야", "보너스 뭐야",
+         "effect", "bonus", "what does it give", "explain"]),
+    "query_level_progression": (
+        ["레벨", "레벨업", "경험치", "렙업", "캐릭터"],
+        ["어떻게 올려", "어떻게 해", "방법 알려줘", "빨리 올리는 법", "어떻게 벌어", "어떻게 강해져",
+         "how to level up", "how does it work", "how to get stronger"]),
+    "query_party_info": (
+        ["파티", "파티는", "같이 사냥", "협동 사냥", "party"],
+        ["어떻게 만들어", "어떻게 해", "뭐야", "방법 알려줘", "인원 몇명", "경험치 어떻게",
+         "how does it work", "how to make", "explain"]),
+    "query_trade_info": (
+        ["교환", "거래", "아이템 교환", "물약 교환", "trade", "trading"],
+        ["어떻게 해", "방법 알려줘", "뭐야", "어떻게 하는거야", "how to do it",
+         "how does it work", "explain"]),
+    "query_world_lore": (
+        ["세계관", "스토리", "이 게임 배경", "옵시디언", "넥서스", "게임 이야기", "lore", "the world"],
+        ["뭐야", "알려줘", "설명해줘", "어떤 거야", "궁금해",
+         "what is it", "tell me", "explain"]),
+    "query_help_controls": (
+        ["조작", "조작법", "이 게임", "게임", "플레이", "controls"],
+        ["어떻게 해", "어떻게 하는거야", "방법 알려줘", "어떻게 움직여", "어떻게 시작해",
+         "how to play", "how does it work", "how do i start"]),
+}
+
 # 괴상/무의미(nonsense) — STT 붕괴. 클라는 reject(되묻기).
 # 명령 단어(캐스터·강남·멈춰·물약 등)를 *넣지 않는다* — 넣으면 모델이 그 단어를 nonsense
 # 신호로 학습해 진짜 명령까지 침범한다. 순수 단음절/감탄사/영문난타만.
@@ -723,13 +801,26 @@ def _gen_v2_semantic(ssot, rng) -> list[tuple[str, dict]]:
         if ai:
             it["answer_intent"] = ai
         out.append((t, it))
-    # 몬스터 정보 질문 — archetype × 표현 → query_monster_info.
+    # 몬스터 정보 질문 — archetype × 표현. "뭐야" 표면 편향을 막으려 표현을 다양화하고
+    # 전체에서 다운샘플(과대표 방지: ~600→160). monster 가 'X 뭐야' 패턴을 독점하면
+    # 다른 의도("세계관이 뭐야")가 monster 로 끌려가는 표면 과적합이 측정됐다.
+    mob_cases: list[tuple[str, dict]] = []
     for arch in ssot["archetypes"]:
         for nm in _MONSTER_KO.get(arch, [arch]):
-            for q in ("뭐야", "어때", "세냐", "약점이 뭐야", "몇 레벨이야"):
-                out.append((f"{nm} {q}", {"action": "unknown",
-                            "semantic_type": "question",
-                            "answer_intent": "query_monster_info"}))
+            for q in ("뭐야", "어때", "세냐", "약점이 뭐야", "몇 레벨이야", "스탯 알려줘",
+                      "강해", "정보 알려줘"):
+                mob_cases.append((f"{nm} {q}", {"action": "unknown",
+                                  "semantic_type": "question",
+                                  "answer_intent": "query_monster_info"}))
+    rng.shuffle(mob_cases)
+    out.extend(mob_cases[:160])
+    # Smart LCM 고정지식 의도 — 주어 × 어미 동적 증강(각 ~50-80개, 한/영). 의도별 균형 +
+    # 주어 토큰(세계관·물약·파티…)에 의도를 묶어 표면 패턴 과적합을 완화한다.
+    for intent, (subjects, suffixes) in _FIXED_INTENT_AUG.items():
+        for s in subjects:
+            for suf in suffixes:
+                out.append((f"{s} {suf}".strip(), {"action": "unknown",
+                            "semantic_type": "question", "answer_intent": intent}))
     # 무의미 — 시드 + 명령을 *심하게* 깨뜨리고 단음절 filler 삽입(2중 음소 노이즈).
     for t in _V2_NONSENSE_SEED:
         out.append((t, {"action": "unknown", "semantic_type": "nonsense"}))
@@ -759,6 +850,7 @@ def generate(ssot: dict, seed: int = 7) -> list[dict]:
     pairs += _gen_context_dependent(rng)
     pairs += _gen_polite(ssot, rng)
     pairs += _gen_v2_semantic(ssot, rng)  # R2/R4a — question/chat/nonsense + answer_intent.
+    pairs += gen_i18n()  # 한·영·중·일 4개 언어 동등(backbone 전제, 2026-06-24 사용자).
     # 중복 제거(같은 발화는 한 번만 — 마지막 라벨 우선).
     dedup: dict[str, dict] = {}
     for text, intent in pairs:

@@ -88,6 +88,8 @@ class LcmRuntime:
         """LCM v2 5-route 결정(plan §2.3) — semantic_type 게이트 + answer_intent + confidence."""
         if st == "nonsense":
             return "reject"                                    # STT 붕괴 → 차단+되묻기
+        if st == "ambiguous":
+            return "clarify"                                  # 맥락지시어 → 되묻기(실행 금지)
         if st == "question":
             return "answer_local" if ai else "cloud"           # 게임 QnA(토픽 有) vs 일반질문
         if st == "chat":
