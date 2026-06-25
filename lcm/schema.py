@@ -37,6 +37,7 @@ ANSWER_INTENTS = [
     NONE,
     # 상태의존 — 클라가 game state(serverProgression)로 답을 채운다.
     "query_player_level",          # "내 레벨 몇이야" (lv/처치)
+    "query_player_name",           # "나는 누구야" "내 캐릭터 이름이 뭐야"(self PC 이름 — game.pcName)
     "query_recommended_hunt_zone", # "내 레벨에 맞는 사냥터 어디야"
     "query_monster_info",          # "캐스터 뭐야" (종류 개요)
     # 고정지식(Smart LCM train7) — 클라가 게임지식 OTA answers[intent] 로 즉답(앱 배포 0).

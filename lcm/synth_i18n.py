@@ -62,6 +62,14 @@ I18N_QUESTION: dict[str, dict[str, list[str]]] = {
         "zh": ["我是几级", "我的等级", "我现在多少级", "查看我的等级"],
         "ja": ["私のレベルは", "今何レベル", "現在のレベルは", "レベルを確認"],
     },
+    # 플레이어 *자기* 캐릭터 이름 — AI 정체성(query_assistant_identity "너는 누구야")과 반드시
+    # *구분*("나/내/제"=PC, "너/넌/라리아"=AI). 2026-06-25 "나는 누구야"→"라리아" 오분류 회귀.
+    "query_player_name": {
+        "ko": ["나는 누구야", "내 캐릭터 이름이 뭐야", "내 이름이 뭐야", "내 캐릭터 이름 알려줘", "나 이름 뭐지"],
+        "en": ["what is my name", "my character name", "who am i", "what's my character name", "tell me my name"],
+        "zh": ["我叫什么名字", "我的角色名字", "我是谁", "我的角色叫什么", "告诉我我的名字"],
+        "ja": ["私の名前は", "私のキャラクター名は", "私は誰", "キャラの名前は", "私の名前を教えて"],
+    },
     "query_recommended_hunt_zone": {
         "ko": ["어디서 사냥하면 좋아", "내 레벨 사냥터 어디", "추천 사냥터", "어디 가서 사냥해"],
         "en": ["where should i hunt", "best hunting spot for my level", "recommended hunting ground", "where to hunt"],

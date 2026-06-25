@@ -688,6 +688,25 @@ _V2_QUESTION = [
     ("렙 몇이야", "query_player_level"), ("내 레벨 확인", "query_player_level"),
     ("지금 내 레벨", "query_player_level"), ("나 레벨 알려줘", "query_player_level"),
     ("몇 레벨이지", "query_player_level"), ("내가 몇 레벨", "query_player_level"),
+    # 플레이어 *자기* 캐릭터 이름(query_player_name) — AI 정체성(query_assistant_identity "너는
+    # 누구야")과 반드시 *구분*. "나/내/제/내가"=플레이어, "너/넌/라리아/당신"=AI. (2026-06-25
+    # "나는 누구야"→"저는 라리아입니다" 오분류 회귀 — 명시 샘플로 "나/너" 경계 학습.)
+    ("나는 누구야", "query_player_name"), ("내 캐릭터 이름이 뭐야", "query_player_name"),
+    ("내 이름이 뭐야", "query_player_name"), ("나 누구야", "query_player_name"),
+    ("내 캐릭터 이름 알려줘", "query_player_name"), ("제 캐릭터 이름이 뭐예요", "query_player_name"),
+    ("나의 이름은 뭐야", "query_player_name"), ("내가 누구야", "query_player_name"),
+    ("내 캐릭터 이름 말해줘", "query_player_name"), ("나 이름 뭐야", "query_player_name"),
+    ("내 닉네임이 뭐야", "query_player_name"), ("내 캐릭 이름", "query_player_name"),
+    ("내 캐릭터 누구야", "query_player_name"), ("나 이름이 뭐지", "query_player_name"),
+    ("내 캐릭터 이름은", "query_player_name"), ("나 이름 알려줘", "query_player_name"),
+    ("what is my name", "query_player_name"), ("my character name", "query_player_name"),
+    ("who am i", "query_player_name"), ("what's my character name", "query_player_name"),
+    ("tell me my name", "query_player_name"), ("my name", "query_player_name"),
+    # AI 정체성(query_assistant_identity) — "너/라리아" 가 핵심. "나"(query_player_name)와 대조.
+    ("너는 누구야", "query_assistant_identity"), ("넌 누구니", "query_assistant_identity"),
+    ("너 이름 뭐야", "query_assistant_identity"), ("라리아 누구야", "query_assistant_identity"),
+    ("당신은 누구세요", "query_assistant_identity"), ("너 이름이 뭐니", "query_assistant_identity"),
+    ("who are you", "query_assistant_identity"), ("what's your name", "query_assistant_identity"),
     ("내 레벨에 맞는 사냥터 어디야", "query_recommended_hunt_zone"),
     ("어디서 사냥하면 좋아", "query_recommended_hunt_zone"),
     ("추천 사냥터 어디야", "query_recommended_hunt_zone"),
