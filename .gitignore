@@ -16,7 +16,14 @@ runs/
 *.ckpt
 
 # 학습 산출물 전체 (토크나이저·onnx·external data — 모두 재현 가능)
-artifacts/
+# ⚠️ artifacts/* (디렉토리 무시 아님) — 하위 golden fixture 를 !예외로 되살리려면 디렉토리가
+#    아니라 글롭이어야 한다(git: 부모 디렉토리가 무시되면 !예외 무효).
+artifacts/*
+# 단, golden 회귀 fixture(24KB)는 *추적* 한다 — Dart backbone_heads_test 가 이 파일을
+# 읽어 heads.forward 정합을 검증하므로, CI/타 머신/타 세션에서도 있어야 한다. e5 가
+# fine-tuned 라 backbone 재학습 시 *반드시 golden 도 함께 재생성·커밋* 해야 stale 가짜
+# 경보를 막는다(2026-06-25 회고: golden 미재생성으로 test 6/2 가짜 실패 → "26"/"타타타" 오진).
+!artifacts/backbone_heads_golden.json
 
 # 모델 캐시 (라리엔 .ai_models 관례)
 .ai_models/
