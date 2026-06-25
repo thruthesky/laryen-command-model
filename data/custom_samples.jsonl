@@ -126,3 +126,34 @@
 {"text": "인공지능 이름은 뭐야", "answer_intent": "query_assistant_identity"}
 {"text": "라리아의 인공지능 버전은 뭐야", "answer_intent": "query_assistant_identity"}
 {"text": "라리아는 어떻게 만들어졌어", "answer_intent": "query_assistant_identity"}
+{"text": "볼륨 낮춰", "action": "volume_down"}
+{"text": "볼륨 낮춰줘", "action": "volume_down"}
+{"text": "소리 줄여", "action": "volume_down"}
+{"text": "소리 줄여줘", "action": "volume_down"}
+{"text": "볼륨 줄여", "action": "volume_down"}
+{"text": "소리 낮춰", "action": "volume_down"}
+{"text": "볼륨 내려", "action": "volume_down"}
+{"text": "소리 작게", "action": "volume_down"}
+{"text": "소리가 너무 커", "action": "volume_down"}
+{"text": "볼륨 좀 낮춰줄래", "action": "volume_down"}
+{"text": "소리 좀 줄여줘", "action": "volume_down"}
+{"text": "볼륨 소리 낮춰 줘", "action": "volume_down"}
+{"text": "볼륨 높여", "action": "volume_up"}
+{"text": "볼륨 올려", "action": "volume_up"}
+{"text": "소리 키워", "action": "volume_up"}
+{"text": "소리 높여줘", "action": "volume_up"}
+{"text": "볼륨 키워", "action": "volume_up"}
+{"text": "소리 크게", "action": "volume_up"}
+{"text": "소리가 너무 작아", "action": "volume_up"}
+{"text": "볼륨 좀 올려줘", "action": "volume_up"}
+{"text": "음소거", "action": "mute_toggle"}
+{"text": "음소거 해", "action": "mute_toggle"}
+{"text": "소리 꺼", "action": "mute_toggle"}
+{"text": "조용히 해", "action": "mute_toggle"}
+{"text": "뮤트", "action": "mute_toggle"}
+{"text": "소리 켜", "action": "mute_toggle"}
+{"text": "음소거 풀어", "action": "mute_toggle"}
+{"text": "메뉴 닫아", "action": "close_ui"}
+{"text": "닫아", "action": "close_ui"}
+{"text": "창 닫아", "action": "close_ui"}
+{"text": "뒤로 가", "action": "close_ui"}

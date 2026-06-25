@@ -35,7 +35,9 @@ OUT = REPO / "config" / "ssot.json"
 #    validation 과 1:1. 거의 안 변하지만, 바뀌면 여기와 dart 를 함께 고친다) ──────────
 ACTIONS = [
     "move", "hunt", "stop", "potion", "equip", "unequip",
-    "auto_combat", "auto_potion", "open_menu", "unknown",
+    "auto_combat", "auto_potion", "open_menu", "close_ui",
+    # 게임 화면 음성 제어(클라 로컬) — 볼륨 ±·음소거. dart VoiceAction 과 동기.
+    "volume_down", "volume_up", "mute_toggle", "unknown",
 ]
 POTIONS = ["hp", "run", "atkspeed", "crit"]          # _potionAlias 키
 UNEQUIP_SLOTS = ["weapon", "armor", "accessory"]      # unequip 'slot'
