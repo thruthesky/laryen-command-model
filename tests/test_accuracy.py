@@ -348,3 +348,36 @@ def test_calibration_ece(rt):
     from lcm.bench import compute_ece
     ece, mean_conf, mean_acc = compute_ece(rt.model, rt.ls, rt.tk)
     assert ece < 0.15, f"ECE {ece:.3f} ≥ 0.15 — confidence 미보정(conf {mean_conf:.2f} vs acc {mean_acc:.2f})"
+
+
+# ── R-slot: 슬롯 정확도 회귀 가드 (다른 팀 지적 — action 만 보면 안 됨) ──────────
+# "open inventory→target=menu" "turn off auto hunt→mode=auto_hunt" 처럼 action 은 맞아도
+# 슬롯이 틀리면 *위험한 오작동*(끄려는데 켜짐). 슬롯까지 정확해야 통과한다.
+SLOT_CASES = [
+    ("인벤토리 열어", "open_menu", "target", "inventory"),
+    ("open inventory", "open_menu", "target", "inventory"),
+    ("자동사냥 꺼", "auto_combat", "mode", "off"),
+    ("turn off auto hunt", "auto_combat", "mode", "off"),
+    ("오토 꺼", "auto_combat", "mode", "off"),
+    ("자동사냥 켜", "auto_combat", "mode", "auto_hunt"),
+    ("강남으로 가", "move", "location", "gangnam"),
+    ("캐스터 사냥", "hunt", "monsters", "Caster"),
+    ("체력 물약 먹어", "potion", "potion", "hp"),
+]
+
+
+def test_slot_accuracy(rt):
+    wrong = []
+    for text, act, slot, val in SLOT_CASES:
+        r = rt.classify(text)
+        intent = r["command"]["actions"][0] if r.get("layer") == "sml" else {}
+        got_act = intent.get("action")
+        got = intent.get(slot)
+        if slot == "monsters":
+            ok = got_act == act and val in (got or [])
+        else:
+            ok = got_act == act and str(got) == val
+        if not ok:
+            wrong.append((text, f"{act}/{slot}={val}", f"{got_act}/{got}"))
+    acc = 1 - len(wrong) / len(SLOT_CASES)
+    assert acc >= 0.85, f"슬롯 정확도 {acc:.2f} < 0.85 — 오류: {wrong}"
