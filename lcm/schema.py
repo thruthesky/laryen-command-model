@@ -47,6 +47,9 @@ ANSWER_INTENTS = [
     "query_trade_info",            # "교환 어떻게 해"
     "query_world_lore",            # "세계관이 뭐야"
     "query_help_controls",         # "어떻게 조작해"
+    "query_assistant_identity",    # "너 이름 뭐야" "어떤 AI 야" "누가 만들었어"(메타 — answers 즉답)
+    "query_assistant_capabilities",# "뭘 할 수 있어" "무엇을 도와줄 수 있어"
+    "query_voice_privacy",         # "내 목소리 서버 가" "로컬에서 처리해"
 ]
 
 

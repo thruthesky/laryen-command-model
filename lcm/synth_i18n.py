@@ -74,6 +74,31 @@ I18N_QUESTION: dict[str, dict[str, list[str]]] = {
         "zh": ["最强的怪物是什么", "有哪些怪物", "哪个怪物厉害"],
         "ja": ["一番強いモンスターは", "どんなモンスターがいる", "どのモンスターが強い"],
     },
+    # 메타 질문(도우미 정체성) — "너 이름 뭐야"·"어떤 AI" 류. answers 즉답(DeepSeek 안 감).
+    "query_assistant_identity": {
+        "ko": ["너 이름 뭐야", "넌 누구야", "어떤 AI 야", "누가 만들었어", "넌 뭐로 만들어졌어",
+               "너 뭐야", "이름이 뭐야", "정체가 뭐야", "넌 무슨 인공지능이야"],
+        "en": ["what is your name", "who are you", "what ai are you", "who made you",
+               "what are you built with", "what are you", "tell me about yourself"],
+        "zh": ["你叫什么名字", "你是谁", "你是什么AI", "谁创造了你", "你是用什么做的", "你是什么"],
+        "ja": ["名前は何", "あなたは誰", "どんなAIなの", "誰が作ったの", "何で作られてるの", "君は何"],
+    },
+    "query_assistant_capabilities": {
+        "ko": ["뭘 할 수 있어", "무엇을 도와줄 수 있어", "어떤 기능이 있어", "뭐 할 수 있는데",
+               "무슨 명령 할 수 있어", "널 어떻게 써"],
+        "en": ["what can you do", "what can you help with", "what are your features",
+               "what commands can i say", "how do i use you"],
+        "zh": ["你能做什么", "你能帮我做什么", "你有什么功能", "我能说什么命令"],
+        "ja": ["何ができる", "何を手伝える", "どんな機能がある", "どんな命令ができる"],
+    },
+    "query_voice_privacy": {
+        "ko": ["내 목소리 서버로 가", "로컬에서 처리해", "음성이 저장돼", "내 말 어디로 가",
+               "녹음이 서버로 가", "개인정보 안전해"],
+        "en": ["does my voice go to the server", "is it processed locally", "is my voice stored",
+               "where does my voice go", "is my data safe"],
+        "zh": ["我的声音会上传服务器吗", "是本地处理吗", "我的语音会被保存吗", "数据安全吗"],
+        "ja": ["私の声はサーバーに送られる", "ローカルで処理される", "音声は保存される", "データは安全"],
+    },
 }
 
 # 지역 없는 핵심 명령 — 4개 언어 동등. (action, mode, target) 라벨.

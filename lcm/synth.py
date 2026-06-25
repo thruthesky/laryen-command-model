@@ -91,10 +91,10 @@ _KO_NUM = {10: "십", 20: "이십", 30: "삼십", 40: "사십", 50: "오십",
 # **fallback 안전장치의 핵심** — 잡담/질문을 명령으로 오인하면 오작동하므로 다양하게 학습.
 _UNKNOWN = [
     # 인사·잡담·정체성·감사.
-    "안녕", "안녕하세요", "반가워", "넌 누구야", "이름이 뭐야", "너 뭐야", "너 이름 뭐니",
+    "안녕", "안녕하세요", "반가워",  # 정체성 질문은 query_assistant_identity 로 이전(중복 제거)
     "고마워", "수고해", "잘 자", "또 보자", "사랑해", "재밌다", "심심해", "지루해",
     "오늘 날씨 어때", "밥 먹었어", "뭐하고 놀까", "노래 불러줘", "농담 해줘",
-    "hello", "hi", "hey", "who are you", "what's your name", "thanks", "thank you",
+    "hello", "hi", "hey", "thanks", "thank you",
     "good job", "see you", "i'm bored", "tell me a joke",
     # 게임 질문(explain) — "무엇/어디/어떻게/왜" 패턴.
     "라리엔이 뭐야", "이 게임 어떻게 해", "도움말", "튜토리얼 보여줘", "조작법 알려줘",
@@ -670,10 +670,10 @@ def _jamo_variant(text: str, rng) -> str:
 # ── LCM v2 (R2 의미 게이트 + R4a QnA) 라벨 데이터 ─────────────────────────────
 # 잡담(chat) — 게임 무관·인사. 클라는 cloud(또는 고정 응답).
 _V2_CHAT = [
-    "안녕", "안녕하세요", "반가워", "넌 누구야", "이름이 뭐야", "너 뭐야", "고마워", "수고해",
+    "안녕", "안녕하세요", "반가워", "고마워", "수고해",  # 정체성 질문 → query_assistant_identity
     "잘 자", "또 보자", "사랑해", "재밌다", "심심해", "지루해", "오늘 날씨 어때", "밥 먹었어",
     "뭐하고 놀까", "노래 불러줘", "농담 해줘", "주식 사도 돼", "내일 비 와", "점심 뭐 먹지",
-    "hello", "hi", "hey", "who are you", "what's your name", "thanks", "thank you",
+    "hello", "hi", "hey", "thanks", "thank you",
     "good job", "see you", "i'm bored", "tell me a joke",
 ]
 # 게임 질문(question). (발화, answer_intent) — None 이면 로컬 답변 토픽 미상(→ cloud 후보).
