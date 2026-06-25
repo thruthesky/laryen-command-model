@@ -11,6 +11,7 @@ data/generated/
 checkpoints/
 runs/
 *.onnx
+*.data          # ONNX external data(weight) + export 임시 .data — GitHub 100MB 초과 방지
 *.bin
 *.pt
 *.ckpt
