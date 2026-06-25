@@ -12,6 +12,10 @@ dependencies = [
     "onnx>=1.16",
     "onnxscript>=0.1",     # torch.onnx.export 신규 exporter 백엔드
     "onnxruntime>=1.19",   # export 검증 (라리엔 클라는 sherpa_onnx 의 onnxruntime 공유)
+    # backbone(multilingual-e5-small) 파인튜닝·export — backbone_train/backbone_export 가 쓴다.
+    # (2026-06-25: 누락돼 있어 uv sync 후 backbone_train 이 ModuleNotFoundError 났다.)
+    "transformers>=4.40",          # AutoModel/AutoTokenizer (e5 backbone fine-tune)
+    "optimum[onnxruntime]>=1.20",  # ORTModelForFeatureExtraction/ORTQuantizer (e5 int8 export)
 ]
 
 [project.optional-dependencies]
