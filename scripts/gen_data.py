@@ -19,6 +19,39 @@ from lcm.schema import load_ssot  # noqa: E402
 from lcm.synth import generate  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parents[1] / "data" / "generated"
+# 사람 개발자가 *직접 타이핑* 하는 추가 학습 샘플(코드 수정 없이 jsonl 한 줄씩).
+CUSTOM = Path(__file__).resolve().parents[1] / "data" / "custom_samples.jsonl"
+
+
+def load_custom() -> list[dict]:
+    """data/custom_samples.jsonl 의 사용자 정의 샘플을 읽는다(없으면 빈 리스트).
+
+    한 줄에 하나의 JSON. 빈 줄·'#'/'//' 주석은 무시. 세 형식 지원:
+      간편 질문 : {"text": "나는 누구야", "answer_intent": "query_player_name"}
+      간편 명령 : {"text": "강남에서 사냥", "action": "hunt"}
+      전체     : {"text": "...", "intent": {"action": "...", "semantic_type": "...", "answer_intent": "..."}}
+    answer_intent/action 만 주면 나머지(semantic_type 등)는 자동으로 채운다.
+    """
+    if not CUSTOM.exists():
+        return []
+    out: list[dict] = []
+    for ln in CUSTOM.read_text(encoding="utf-8").splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#") or s.startswith("//"):
+            continue
+        d = json.loads(s)
+        t = d["text"]
+        if "intent" in d:
+            out.append({"text": t, "intent": d["intent"]})
+        elif "answer_intent" in d:  # 질문(answer_local) 간편 형식
+            out.append({"text": t, "intent": {
+                "action": "unknown", "semantic_type": "question",
+                "answer_intent": d["answer_intent"]}})
+        elif "action" in d:  # 명령(execute) 간편 형식
+            out.append({"text": t, "intent": {
+                "action": d["action"], "semantic_type": "command",
+                "answer_intent": "<none>"}})
+    return out
 
 
 def main() -> int:
@@ -28,6 +61,8 @@ def main() -> int:
     args = ap.parse_args()
 
     rows = generate(load_ssot(), seed=args.seed)
+    custom = load_custom()  # 사람이 data/custom_samples.jsonl 에 타이핑한 추가 샘플
+    rows += custom
     rng = random.Random(args.seed)
     rng.shuffle(rows)
     n_val = max(1, int(len(rows) * args.val_ratio))
@@ -42,7 +77,8 @@ def main() -> int:
     # action 분포 요약(편향 점검).
     from collections import Counter
     dist = Counter(r["intent"]["action"] for r in rows)
-    print(f"✅ 생성 {len(rows)}건 → train {len(train)} / val {len(val)}")
+    print(f"✅ 생성 {len(rows)}건(합성 {len(rows) - len(custom)} + 사용자 custom {len(custom)})"
+          f" → train {len(train)} / val {len(val)}")
     print("   action 분포:", dict(sorted(dist.items(), key=lambda x: -x[1])))
     return 0
 
