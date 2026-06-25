@@ -710,8 +710,21 @@ _V2_QUESTION = [
     ("내 레벨에 맞는 사냥터 어디야", "query_recommended_hunt_zone"),
     ("어디서 사냥하면 좋아", "query_recommended_hunt_zone"),
     ("추천 사냥터 어디야", "query_recommended_hunt_zone"),
-    ("지금 어디서 사냥해", "query_recommended_hunt_zone"),
     ("내 레벨로 어디서 사냥해", "query_recommended_hunt_zone"),
+    # 현재 위치(query_current_zone) — "지금/현재 사냥하는 곳". 추천과 *반드시 구분*(2026-06-25
+    # 회귀: "지금 사냥하고 있는 곳"→"레벨 76에는 동대문 추천" 오분류). 모호한 "지금 어디서
+    # 사냥해"(추천?현재?)는 제거하고, "지금/현재/내가 있는"=현재, "맞는/추천/갈"=추천으로 분리.
+    ("지금 내가 사냥하고 있는 곳은 어디야", "query_current_zone"),
+    ("지금 사냥하는 곳 어디야", "query_current_zone"),
+    ("지금 어느 사냥터에 있어", "query_current_zone"),
+    ("내가 지금 있는 데가 어디야", "query_current_zone"),
+    ("현재 위치가 어디야", "query_current_zone"),
+    ("여기가 어디야", "query_current_zone"),
+    ("지금 어디서 사냥 중이야", "query_current_zone"),
+    ("내 캐릭터 지금 어디 있어", "query_current_zone"),
+    ("지금 내 위치 어디야", "query_current_zone"),
+    ("what zone am i in", "query_current_zone"),
+    ("where am i now", "query_current_zone"),
     ("어디 가서 사냥할까", "query_recommended_hunt_zone"),
     ("where should i hunt", "query_recommended_hunt_zone"),
     ("사냥터 추천해줘", "query_recommended_hunt_zone"),

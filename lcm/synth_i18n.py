@@ -70,11 +70,19 @@ I18N_QUESTION: dict[str, dict[str, list[str]]] = {
         "zh": ["我叫什么名字", "我的角色名字", "我是谁", "我的角色叫什么", "告诉我我的名字"],
         "ja": ["私の名前は", "私のキャラクター名は", "私は誰", "キャラの名前は", "私の名前を教えて"],
     },
+    # *현재 위치/사냥터* — "지금 사냥하는 곳"(현재). 추천(query_recommended_hunt_zone)과 *구분*.
+    "query_current_zone": {
+        "ko": ["지금 사냥하는 곳 어디야", "지금 어느 사냥터에 있어", "내가 지금 있는 데 어디", "현재 위치 어디야", "여기가 어디야"],
+        "en": ["what zone am i in", "where am i now", "what area am i in", "my current location", "where am i hunting now"],
+        "zh": ["我现在在哪个区域", "我现在在哪里", "我当前位置", "我在哪个狩猎场", "这是哪里"],
+        "ja": ["今どこで狩りしてる", "今どのエリアにいる", "現在地はどこ", "今いる場所は", "ここはどこ"],
+    },
+    # *추천* 사냥터 — "내 레벨에 맞는"(추천). 현재 위치(query_current_zone)와 *구분*.
     "query_recommended_hunt_zone": {
-        "ko": ["어디서 사냥하면 좋아", "내 레벨 사냥터 어디", "추천 사냥터", "어디 가서 사냥해"],
-        "en": ["where should i hunt", "best hunting spot for my level", "recommended hunting ground", "where to hunt"],
-        "zh": ["在哪里打怪好", "适合我等级的狩猎场", "推荐的狩猎地点", "去哪里打怪"],
-        "ja": ["どこで狩りすればいい", "私のレベルの狩場", "おすすめの狩場", "どこで狩りする"],
+        "ko": ["내 레벨에 맞는 사냥터 어디", "내 레벨 사냥터 추천", "추천 사냥터 알려줘", "어디로 사냥 갈까"],
+        "en": ["where should i hunt", "best hunting spot for my level", "recommended hunting ground", "where to go hunting"],
+        "zh": ["适合我等级的狩猎场", "推荐的狩猎地点", "去哪里打怪好", "我该去哪打怪"],
+        "ja": ["私のレベルの狩場", "おすすめの狩場", "どこで狩りすればいい", "どこに狩りに行く"],
     },
     "query_monster_info": {
         "ko": ["제일 센 몬스터 뭐야", "몬스터 종류 뭐 있어", "어떤 몬스터가 강해"],

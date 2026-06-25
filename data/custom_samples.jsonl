@@ -157,3 +157,22 @@
 {"text": "닫아", "action": "close_ui"}
 {"text": "창 닫아", "action": "close_ui"}
 {"text": "뒤로 가", "action": "close_ui"}
+{"text": "지금 내가 사냥하고 있는 곳은 어디야", "answer_intent": "query_current_zone"}
+{"text": "지금 사냥하는 곳 어디야", "answer_intent": "query_current_zone"}
+{"text": "내가 지금 있는 데가 어디야", "answer_intent": "query_current_zone"}
+{"text": "지금 어느 사냥터에 있어", "answer_intent": "query_current_zone"}
+{"text": "여기가 어디야", "answer_intent": "query_current_zone"}
+{"text": "현재 위치가 어디야", "answer_intent": "query_current_zone"}
+{"text": "지금 어디서 사냥 중이야", "answer_intent": "query_current_zone"}
+{"text": "내가 사냥하고 있는 데 어디", "answer_intent": "query_current_zone"}
+{"text": "지금 내 위치 어디야", "answer_intent": "query_current_zone"}
+{"text": "나 지금 어느 지역이야", "answer_intent": "query_current_zone"}
+{"text": "내 캐릭터 지금 어디 있어", "answer_intent": "query_current_zone"}
+{"text": "지금 있는 사냥터 어디야", "answer_intent": "query_current_zone"}
+{"text": "what zone am i in", "answer_intent": "query_current_zone"}
+{"text": "where am i now", "answer_intent": "query_current_zone"}
+{"text": "내 레벨에 맞는 사냥터 어디야", "answer_intent": "query_recommended_hunt_zone"}
+{"text": "어디 가서 사냥하면 좋아", "answer_intent": "query_recommended_hunt_zone"}
+{"text": "추천 사냥터 알려줘", "answer_intent": "query_recommended_hunt_zone"}
+{"text": "어디로 사냥 갈까", "answer_intent": "query_recommended_hunt_zone"}
+{"text": "내 레벨 맞는 사냥터 추천", "answer_intent": "query_recommended_hunt_zone"}
