@@ -25,6 +25,40 @@ from .schema import LabelSpace, load_ssot
 
 MAX_ONDEVICE_MB = 200  # 🛑 온디바이스 용량 상한(2026-06-24 사용자 지시).
 
+# golden 회귀 fixture 텍스트 — 4언어 대표(question/command/ambiguous). backbone_heads_test 가
+# 이 pooled+기대라벨로 Dart heads.forward 정합을 검증한다. export 가 onnx/heads 와 *같은
+# 체크포인트*에서 golden 도 재생성하므로 셋이 항상 동기 → golden stale(가짜 경보) 원천 차단.
+GOLDEN_TEXTS = [
+    "물약 효과 뭐야", "강남으로 가", "거기로 가서 그거 잡아",
+    "药水有什么效果", "ポーションの効果は", "사냥해",
+]
+
+
+def _export_golden(model: "BackboneLcm", tk) -> None:
+    """onnx/heads 와 같은 체크포인트에서 golden(pooled + 기대 라벨)을 생성한다.
+
+    e5 가 fine-tuned 라 golden(구 e5 pooled)이 낡으면 heads_test 가 *가짜로* 실패한다
+    (2026-06-25 "26"/"타타타" 오진 회고). 그래서 export 마다 항상 함께 재생성한다.
+    """
+    golden = []
+    for t in GOLDEN_TEXTS:
+        enc = tk(t, return_tensors="pt", truncation=True, max_length=48)
+        with torch.no_grad():
+            out = model.backbone(input_ids=enc["input_ids"],
+                                 attention_mask=enc["attention_mask"]).last_hidden_state
+            logits = model(enc["input_ids"], enc["attention_mask"])
+        m = enc["attention_mask"].unsqueeze(-1).float()
+        pooled = ((out * m).sum(1) / m.sum(1).clamp_min(1.0))[0].tolist()
+        golden.append({
+            "text": t, "pooled": pooled,
+            "action": int(logits["action"].argmax()),
+            "semantic_type": int(logits["semantic_type"].argmax()),
+            "answer_intent": int(logits["answer_intent"].argmax()),
+        })
+    json.dump(golden, open("artifacts/backbone_heads_golden.json", "w"),
+              ensure_ascii=False)
+    print(f"✅ golden {len(golden)}건 재생성(onnx/heads 와 같은 체크포인트 — stale 불가)")
+
 
 def main() -> int:
     ls = LabelSpace(load_ssot())
@@ -63,6 +97,10 @@ def main() -> int:
     }
     hp = "artifacts/lcm_backbone_heads.json"
     json.dump(meta, open(hp, "w"), ensure_ascii=False)
+
+    # 2.5) golden 회귀 fixture 자동 재생성 — onnx/heads 와 *같은 체크포인트*에서.
+    #   이 한 줄이 "backbone 재학습했는데 golden 재생성 깜빡" → stale 가짜 경보를 원천 차단한다.
+    _export_golden(model, AutoTokenizer.from_pretrained(BACKBONE))
 
     # 3) 용량 가드.
     int8 = "artifacts/e5_int8/model_quantized.onnx"
